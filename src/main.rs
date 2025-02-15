@@ -181,8 +181,14 @@ impl AV1Studio {
             _ => String::new(),
         };
 
+        let thread_affinity_param = if self.thread_affinity > 0 {
+            format!("--set-thread-affinity {} ", self.thread_affinity)
+        } else {
+            String::new()
+        };
+
         format!(
-            "av1an -i \"{}\" {} {} --verbose --sc-pix-format=yuv420p --split-method --av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" --set-thread-affinity {} -w {} -o \"{}\"",
+            "av1an -i \"{}\" {} {} --verbose --sc-pix-format=yuv420p --split-method --av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" {} -w {} -o \"{}\"",
             input,
             zones_param,
             scenes_param,
@@ -192,7 +198,7 @@ impl AV1Studio {
             self.pixel_format,
             resolution,
             audio_params,
-            self.thread_affinity,
+            thread_affinity_param,
             self.workers,
             output
         )
