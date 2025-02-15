@@ -2,6 +2,7 @@ use iced::{
     executor, Application, Command, Element, Settings, Subscription, Theme,
 };
 use iced::widget::{button, column, pick_list, row, text, text_input, slider, scrollable};
+use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use num_cpus::{{get, get_physical}};
@@ -52,6 +53,25 @@ enum Message {
     CancelEncoding,
     AudioEncoderChanged(AudioEncoder),
     CustomParamsChanged(String),
+    SelectPreset,
+    SavePreset,
+    PresetFileSelected(Option<PathBuf>),
+    SavePresetFileSelected(Option<PathBuf>),
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct Preset {
+    source_module: SourceModule,
+    resolution: (Option<u32>, Option<u32>),
+    pixel_format: PixelFormat,
+    audio_encoder: AudioEncoder,
+    audio_bitrate: String,
+    crf: u8,
+    preset: u8,
+    workers: u16,
+    thread_affinity: u16,
+    film_grain: u8,
+    custom_params: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -66,7 +86,7 @@ enum EncodingState {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 enum SourceModule {
     #[default]
     FFMS2,
@@ -74,7 +94,7 @@ enum SourceModule {
     LSMash,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 enum PixelFormat {
     Yuv420p,
     #[default]
@@ -87,7 +107,7 @@ enum ProgressUpdate {
     Finished,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 enum AudioEncoder {
     #[default]
     OPUS,
@@ -202,6 +222,36 @@ impl AV1Studio {
             self.workers,
             output
         )
+    }
+
+    fn to_preset(&self) -> Preset {
+        Preset {
+            source_module: self.source_module,
+            resolution: self.resolution,
+            pixel_format: self.pixel_format,
+            audio_encoder: self.audio_encoder,
+            audio_bitrate: self.audio_bitrate.clone(),
+            crf: self.crf,
+            preset: self.preset,
+            workers: self.workers,
+            thread_affinity: self.thread_affinity,
+            film_grain: self.film_grain,
+            custom_params: self.custom_params.clone(),
+        }
+    }
+
+    fn apply_preset(&mut self, preset: Preset) {
+        self.source_module = preset.source_module;
+        self.resolution = preset.resolution;
+        self.pixel_format = preset.pixel_format;
+        self.audio_encoder = preset.audio_encoder;
+        self.audio_bitrate = preset.audio_bitrate;
+        self.crf = preset.crf;
+        self.preset = preset.preset;
+        self.workers = preset.workers;
+        self.thread_affinity = preset.thread_affinity;
+        self.film_grain = preset.film_grain;
+        self.custom_params = preset.custom_params;
     }
 }
 
@@ -374,6 +424,45 @@ impl Application for AV1Studio {
                 self.zones_path = path;
                 Command::none()
             }
+            Message::SelectPreset => Command::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("JSON files", &["json"])
+                        .pick_file()
+                        .await
+                        .map(|f| f.path().to_owned())
+                },
+                Message::PresetFileSelected,
+            ),
+            Message::SavePreset => Command::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("JSON files", &["json"])
+                        .save_file()
+                        .await
+                        .map(|f| f.path().to_owned())
+                },
+                Message::SavePresetFileSelected,
+            ),
+            Message::PresetFileSelected(path) => {
+                if let Some(path) = path {
+                    if let Ok(file) = std::fs::read_to_string(&path) {
+                        if let Ok(preset) = serde_json::from_str::<Preset>(&file) {
+                            self.apply_preset(preset);
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::SavePresetFileSelected(path) => {
+                if let Some(path) = path {
+                    let preset = self.to_preset();
+                    if let Ok(json) = serde_json::to_string_pretty(&preset) {
+                        let _ = std::fs::write(path, json);
+                    }
+                }
+                Command::none()
+            }
             _ => Command::none(),
         }
     }
@@ -519,6 +608,15 @@ impl Application for AV1Studio {
             |path| path.to_string_lossy().to_string()
         );
 
+        let preset_controls = row![
+            button("Load Preset")
+            .on_press(Message::SelectPreset),
+            button("Save Preset")
+            .on_press(Message::SavePreset),
+        ]
+        .spacing(10)
+        .padding(5);
+
         scrollable(
             column![
                 text("AV1Studio").size(24),
@@ -574,6 +672,8 @@ impl Application for AV1Studio {
                 av1an_options,
 
                 encoding_controls,
+
+                preset_controls,
             ]
             .padding(20)
             .spacing(20)
