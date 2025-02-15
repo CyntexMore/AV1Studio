@@ -141,6 +141,43 @@ impl std::fmt::Display for AudioEncoder {
     }
 }
 
+impl AV1Studio {
+    fn generate_av1an_command(&self) -> String {
+        let input = self.input_path.to_string_lossy();
+        let output = self.output_path.to_string_lossy();
+
+        let resolution = match self.resolution {
+            (Some(w), Some(h)) => format!("-f \"-vf scale={}:{}:flags=bicubic:param0=0:param1=1/2\"", w, h),
+            _ => String::new(),
+        };
+
+        let video_params = format!(
+            "--tune 2 --keyint 1 --lp 2 --irefresh-type 2 --crf {} --preset {} --film-grain {}",
+            self.crf, self.preset, self.film_grain,
+        );
+
+        let audio_params = match self.audio_encoder {
+            AudioEncoder::OPUS => format!("-c:a libopus -b:a {}k -ac 2", self.audio_bitrate),
+            AudioEncoder::AAC => format!("-c:a aac -b:a {}k -ac 2", self.audio_bitrate),
+            AudioEncoder::Vorbis => format!("-c:a libvorbis -b:a {}k -ac 2", self.audio_bitrate),
+        };
+
+        format!(
+            "av1an -i \"{}\" --verbose --sc-pix-format=yuv420p --split-method --av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" --set-thread-affinity {} -w {} -o \"{}\"",
+            input,
+            self.source_module.to_string().to_lowercase(),
+            video_params,
+            self.custom_params,
+            self.pixel_format,
+            resolution,
+            audio_params,
+            self.thread_affinity,
+            self.workers,
+            output
+        )
+    }
+}
+
 impl Application for AV1Studio {
     type Message = Message;
     type Theme = Theme;
@@ -270,6 +307,15 @@ impl Application for AV1Studio {
                     self.workers = value;
                 }
                 Command::none()
+            }
+            Message::StartEncoding => {
+                if self.input_path.exists() {
+                    let command = self.generate_av1an_command();
+                    println!("Generated command: \n{}", command);
+                    Command::none()
+                } else {
+                    Command::none()
+                }
             }
             _ => Command::none(),
         }
