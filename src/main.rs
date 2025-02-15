@@ -5,7 +5,7 @@ use iced::widget::{button, column, pick_list, row, text, text_input, slider, scr
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
 use tokio::sync::mpsc;
-use num_cpus::{{get, get_physical}};
+use num_cpus::{get, get_physical};
 
 #[derive(Debug, Clone)]
 struct AV1Studio {
@@ -25,10 +25,12 @@ struct AV1Studio {
     film_grain: u8,
     encoding_state: EncodingState,
     custom_params: String,
+    current_theme: Theme,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
+    ChangeTheme(Theme),
     SelectInput,
     SelectOutput,
     SelectScenes,
@@ -284,9 +286,14 @@ impl Application for AV1Studio {
                 film_grain: 0,
                 encoding_state: EncodingState::Idle,
                 custom_params: String::new(),
+                current_theme: Theme::Dark,
             },
             Command::none(),
         )
+    }
+
+    fn theme(&self) -> Theme {
+        self.current_theme.clone()
     }
 
     fn title(&self) -> String {
@@ -295,6 +302,10 @@ impl Application for AV1Studio {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
+            Message::ChangeTheme(theme) => {
+                self.current_theme = theme;
+                Command::none()
+            }
             Message::SelectInput => Command::perform(
                 async {
                     rfd::AsyncFileDialog::new()
@@ -617,8 +628,19 @@ impl Application for AV1Studio {
         .spacing(10)
         .padding(5);
 
+        let theme_switcher = row![
+            button("Light Theme")
+            .on_press(Message::ChangeTheme(Theme::Light)),
+            button("Dark Theme")
+            .on_press(Message::ChangeTheme(Theme::Dark)),
+        ]
+        .spacing(10)
+        .padding(5);
+
         scrollable(
             column![
+                theme_switcher,
+
                 text("AV1Studio").size(24),
                 text("A GUI for AV1 encoding via Av1an and SVT-AV1-PSY written in Rust using iced.").size(16),
                 row![
