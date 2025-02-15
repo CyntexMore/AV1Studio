@@ -10,6 +10,8 @@ use num_cpus::{{get, get_physical}};
 struct AV1Studio {
     input_path: PathBuf,
     output_path: PathBuf,
+    scenes_path: Option<PathBuf>,
+    zones_path: Option<PathBuf>,
     source_module: SourceModule,
     resolution: (Option<u32>, Option<u32>),
     pixel_format: PixelFormat,
@@ -28,8 +30,12 @@ struct AV1Studio {
 enum Message {
     SelectInput,
     SelectOutput,
+    SelectScenes,
+    SelectZones,
     InputFileSelected(Option<PathBuf>),
     OutputFileSelected(Option<PathBuf>),
+    ScenesFileSelected(Option<PathBuf>),
+    ZonesFileSelected(Option<PathBuf>),
     SourceModuleChanged(SourceModule),
     ResolutionWidthChanged(String),
     ResolutionHeightChanged(String),
@@ -162,9 +168,24 @@ impl AV1Studio {
             AudioEncoder::Vorbis => format!("-c:a libvorbis -b:a {}k -ac 2", self.audio_bitrate),
         };
 
+        let zones_param = self.zones_path.as_ref().map(|path| 
+            format!("--zones \"{}\" ", path.to_string_lossy())
+        ).unwrap_or_default();
+
+        let scenes_param = self.scenes_path.as_ref().map(|path| 
+            format!("--scenes \"{}\" ", path.to_string_lossy())
+        ).unwrap_or_default();
+
+        let resolution = match self.resolution {
+            (Some(w), Some(h)) => format!("-f \"-vf scale={}:{}:flags=bicubic:param0=0:param1=1/2\"", w, h),
+            _ => String::new(),
+        };
+
         format!(
-            "av1an -i \"{}\" --verbose --sc-pix-format=yuv420p --split-method --av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" --set-thread-affinity {} -w {} -o \"{}\"",
+            "av1an -i \"{}\" {} {} --verbose --sc-pix-format=yuv420p --split-method --av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" --set-thread-affinity {} -w {} -o \"{}\"",
             input,
+            zones_param,
+            scenes_param,
             self.source_module.to_string().to_lowercase(),
             video_params,
             self.custom_params,
@@ -193,6 +214,8 @@ impl Application for AV1Studio {
             Self {
                 input_path: PathBuf::new(),
                 output_path: PathBuf::new(),
+                scenes_path: None,
+                zones_path: None,
                 source_module: SourceModule::FFMS2,
                 resolution: (None, None),
                 pixel_format: PixelFormat::Yuv420p10le,
@@ -316,6 +339,34 @@ impl Application for AV1Studio {
                 } else {
                     Command::none()
                 }
+            }
+            Message::SelectScenes => Command::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("JSON files", &["json"])
+                        .pick_file()
+                        .await
+                        .map(|f| f.path().to_owned())
+                },
+                Message::ScenesFileSelected,
+            ),
+            Message::SelectZones => Command::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("Text files", &["txt"])
+                        .pick_file()
+                        .await
+                        .map(|f| f.path().to_owned())
+                },
+                Message::ZonesFileSelected,
+            ),
+            Message::ScenesFileSelected(path) => {
+                self.scenes_path = path;
+                Command::none()
+            }
+            Message::ZonesFileSelected(path) => {
+                self.zones_path = path;
+                Command::none()
             }
             _ => Command::none(),
         }
@@ -452,6 +503,16 @@ impl Application for AV1Studio {
         .spacing(10)
         .padding(5);
 
+        let scenes_text = self.scenes_path.as_ref().map_or(
+            "No scenes file selected".to_string(),
+            |path| path.to_string_lossy().to_string()
+        );
+
+        let zones_text = self.zones_path.as_ref().map_or(
+            "No zones file selected".to_string(),
+            |path| path.to_string_lossy().to_string()
+        );
+
         scrollable(
             column![
                 text("AV1Studio").size(24),
@@ -468,6 +529,22 @@ impl Application for AV1Studio {
                     text("Output File:").width(100),
                     text(output_text).width(400),
                     button("Select").on_press(Message::SelectOutput),
+                ]
+                .spacing(10)
+                .padding(5),
+
+                row![
+                    text("Scenes File:").width(100),
+                    text(scenes_text).width(400),
+                    button("Select").on_press(Message::SelectScenes),
+                ]
+                .spacing(10)
+                .padding(5),
+
+                row![
+                    text("Zones File:").width(100),
+                    text(zones_text).width(400),
+                    button("Select").on_press(Message::SelectZones),
                 ]
                 .spacing(10)
                 .padding(5),
