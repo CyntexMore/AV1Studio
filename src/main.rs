@@ -2,13 +2,16 @@ use iced::{
     executor, Application, Command, Element, Settings, Subscription, Theme,
 };
 use iced::widget::{button, column, pick_list, row, text, text_input, slider, scrollable};
+use iced::theme::Button;
+use iced::Renderer;
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tokio::io::AsyncBufReadExt;
-use std::process::{Command as StdCommand, Stdio};
+use std::process::{Stdio};
 use tokio::process::Command as AsyncCommand;
-use num_cpus::{get, get_physical};
+use regex::Regex;
+use std::future::Future;
 
 #[derive(Debug, Clone)]
 struct AV1Studio {
@@ -64,13 +67,15 @@ enum Message {
     SavePresetFileSelected(Option<PathBuf>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct ProgressUpdate {
+    status: String,
     percentage: f32,
     current_frame: u64,
     total_frames: u64,
     fps: f32,
     eta: String,
+    elapsed_time: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -88,14 +93,16 @@ struct Preset {
     custom_params: String,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 enum EncodingState {
-    #[default]
     Idle,
     Encoding {
+        status: String,
         progress: f32,
         current_frame: u64,
         total_frames: u64,
+        fps: f32,
+        eta: String,
         cancel_sender: mpsc::Sender<()>,
     },
 }
@@ -226,7 +233,7 @@ impl AV1Studio {
         };
 
         format!(
-            "av1an -i \"{}\" {} {} --verbose --sc-pix-format=yuv420p --split-method av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" {} -w {} -o \"{}\"",
+            "av1an-verbosity -i \"{}\" {} {} --verbose-frame-info --sc-pix-format=yuv420p --split-method av-scenechange -m {} -c mkvmerge --sc-downscale-height 1080 -e svt-av1 --force -v \"{} {}\" --pix-format {} {} -a \"{}\" {} -w {} -o \"{}\"",
             input,
             zones_param,
             scenes_param,
@@ -273,6 +280,8 @@ impl AV1Studio {
     }
 
     async fn run_encoding(command: String, mut cancel_rx: mpsc::Receiver<()>, progress_tx: mpsc::Sender<ProgressUpdate>) -> Result<(), String> {
+        println!("Starting encoding with command: {}", command);
+    
         let mut child = AsyncCommand::new("sh")
             .arg("-c")
             .arg(command)
@@ -280,18 +289,50 @@ impl AV1Studio {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| e.to_string())?;
-
+    
         let stdout = child.stdout.take().unwrap();
-        let mut reader = tokio::io::BufReader::new(stdout);
-        let mut line = String::new();
-
+        let stderr = child.stderr.take().unwrap();
+        
+        let mut stdout_reader = tokio::io::BufReader::new(stdout);
+        let mut stderr_reader = tokio::io::BufReader::new(stderr);
+        
+        let mut stdout_line = String::new();
+        let mut stderr_line = String::new();
+    
         tokio::select! {
             status = async {
-                while reader.read_line(&mut line).await.is_ok() {
-                    if let Some(progress) = Self::parse_progress(&line) {
-                        let _ = progress_tx.send(progress).await;
+                loop {
+                    tokio::select! {
+                        result = stdout_reader.read_line(&mut stdout_line) => {
+                            if let Ok(n) = result {
+                                if n == 0 { break; }
+                                println!("Stdout: {}", stdout_line); 
+                                
+                                if stdout_line.trim().matches(' ').count() == 1 
+                                   && stdout_line.trim().split(' ').all(|s| s.parse::<u64>().is_ok()) {
+                                    if let Some(progress) = Self::parse_progress(&stdout_line) {
+                                        println!("Sending frame count update: {:?}", progress);
+                                        let _ = progress_tx.send(progress).await;
+                                    }
+                                }
+                                stdout_line.clear();
+                            }
+                        }
+                        result = stderr_reader.read_line(&mut stderr_line) => {
+                            if let Ok(n) = result {
+                                if n == 0 { break; }
+                                println!("Stderr: {}", stderr_line); 
+                                
+                                if stderr_line.contains('▕') && stderr_line.contains('%') {
+                                    if let Some(progress) = Self::parse_progress(&stderr_line) {
+                                        println!("Sending progress bar update: {:?}", progress);
+                                        let _ = progress_tx.send(progress).await;
+                                    }
+                                }
+                                stderr_line.clear();
+                            }
+                        }
                     }
-                    line.clear();
                 }
                 child.wait().await
             } => {
@@ -309,16 +350,64 @@ impl AV1Studio {
     }
 
     fn parse_progress(line: &str) -> Option<ProgressUpdate> {
-        let re = regex::Regex::new(r"(\d+)%  (\d+)/(\d+) \((\d+\.\d+) fps, eta (.+)\)").ok()?;
-        let caps = re.captures(line)?;
+        let frame_re = Regex::new(r"^(\d+)\s+(\d+)$").ok()?;
+        
+        let progress_re = Regex::new(r"[⠀-⣿]?\s*(\d+:\d+:\d+)\s+▕[█▏▎▍▌▋▊▉\s]*▏\s*(\d+)%\s*(\d+)/(\d+)\s*\(([\d\.]+)(?:\s*fps|(?:\s*s/fr)),\s*eta\s*([^\)]+)\)").ok()?;
+    
+        let line = line.trim();
+    
+        if let Some(caps) = frame_re.captures(line) {
+            let current_frame: u64 = caps.get(1)?.as_str().parse().ok()?;
+            let total_frames: u64 = caps.get(2)?.as_str().parse().ok()?;
+            let percentage = (current_frame as f32 / total_frames as f32) * 100.0;
+            
+            println!("Parsed frame count: {}/{} ({}%)", current_frame, total_frames, percentage); 
+            
+            return Some(ProgressUpdate {
+                status: String::new(),
+                percentage,
+                current_frame,
+                total_frames,
+                fps: 0.0,
+                eta: String::new(),
+                elapsed_time: String::new(),
+            });
+        } else if let Some(caps) = progress_re.captures(line) {
+            let fps_str = caps.get(5)?.as_str();
+            let fps = if fps_str.contains("s/fr") {
+                let spf: f32 = fps_str.parse().ok()?;
+                if spf > 0.0 { 1.0 / spf } else { 0.0 }
+            } else {
+                fps_str.parse().ok()?
+            };
+            
+            println!("Parsed progress line: {}% FPS: {} ETA: {}", 
+                caps.get(2)?.as_str(),
+                fps,
+                caps.get(6)?.as_str()
+            ); 
+            
+            return Some(ProgressUpdate {
+                status: String::new(),
+                percentage: caps.get(2)?.as_str().parse().ok()?,
+                current_frame: caps.get(3)?.as_str().parse().ok()?,
+                total_frames: caps.get(4)?.as_str().parse().ok()?,
+                fps,
+                eta: caps.get(6)?.as_str().to_string(),
+                elapsed_time: caps.get(1)?.as_str().to_string(),
+            });
+        }
+    
+        None
+    }
+}
 
-        Some(ProgressUpdate {
-            percentage: caps.get(1)?.as_str().parse().ok()?,
-            current_frame: caps.get(2)?.as_str().parse().ok()?,
-            total_frames: caps.get(3)?.as_str().parse().ok()?,
-            fps: caps.get(4)?.as_str().parse().ok()?,
-            eta: caps.get(5)?.as_str().to_string(),
-        })
+fn handle_progress(mut progress_rx: mpsc::Receiver<ProgressUpdate>) -> impl Future<Output = ProgressUpdate> {
+    async move {
+        while let Some(progress) = progress_rx.recv().await {
+            return progress;
+        }
+        ProgressUpdate::default() 
     }
 }
 
@@ -462,44 +551,51 @@ impl Application for AV1Studio {
                 Command::none()
             }
             Message::StartEncoding => {
-                if self.input_path.exists() {
-                    let command = self.generate_av1an_command();
-                    println!("Generated command: \n{}", command);
-                    
-                    let (cancel_tx, cancel_rx) = mpsc::channel(1);
-                    let (progress_tx, mut progress_rx) = mpsc::channel(100);
-                    
-                    self.encoding_state = EncodingState::Encoding {
-                        progress: 0.0,
-                        current_frame: 0,
-                        total_frames: 0,
-                        cancel_sender: cancel_tx,
-                    };
-    
-                    Command::batch(vec![
-                        Command::perform(
-                            Self::run_encoding(command, cancel_rx, progress_tx),
-                            Message::EncodingFinished
-                        ),
-                        Command::perform(async move {
+                let command = self.generate_av1an_command();
+                let (cancel_tx, cancel_rx) = mpsc::channel(1);
+                let (progress_tx, mut progress_rx) = mpsc::channel(100);
+            
+                self.encoding_state = EncodingState::Encoding {
+                    status: String::new(),
+                    progress: 0.0,
+                    current_frame: 0,
+                    total_frames: 0,
+                    fps: 0.0,
+                    eta: String::new(),
+                    cancel_sender: cancel_tx,
+                };
+            
+                Command::batch([
+                    Command::perform(
+                        Self::run_encoding(command, cancel_rx, progress_tx),
+                        Message::EncodingFinished,
+                    ),
+                    Command::perform(
+                        async move {
                             while let Some(progress) = progress_rx.recv().await {
-                                return Message::EncodingProgress(progress);
+                                println!("StartEncoding: Received progress: {:?}", progress);
+                                return progress;
                             }
-                            Message::EncodingFinished(Ok(()))
-                        }, |msg| msg)
-                    ])
-                } else {
-                    Command::none()
-                }
+                            ProgressUpdate::default()
+                        },
+                        Message::EncodingProgress,
+                    ),
+                ])
             }
             Message::EncodingProgress(progress) => {
-                if let EncodingState::Encoding { .. } = &mut self.encoding_state {
+                println!("UPDATE: Received progress: {:?}", progress);
+                if let EncodingState::Encoding { cancel_sender, .. } = &self.encoding_state {
+                    println!("UPDATE: Updating encoding state");
                     self.encoding_state = EncodingState::Encoding {
+                        status: progress.status,
                         progress: progress.percentage / 100.0,
                         current_frame: progress.current_frame,
                         total_frames: progress.total_frames,
-                        cancel_sender: self.encoding_state.get_cancel_sender().unwrap(),
+                        fps: progress.fps,
+                        eta: progress.eta,
+                        cancel_sender: cancel_sender.clone(),
                     };
+                    println!("UPDATE: New state: {:?}", self.encoding_state);
                 }
                 Command::none()
             }
@@ -643,28 +739,49 @@ impl Application for AV1Studio {
         .spacing(10)
         .padding(5);
 
-        let encoding_controls = match &self.encoding_state {
-            EncodingState::Idle => row![
-                button("Start Encoding")
-                .on_press(Message::StartEncoding)
-                .padding(10)
-            ],
-            EncodingState::Encoding { progress, .. } => row![
-                button("Cancel Encoding")
-                .on_press(Message::CancelEncoding)
-                .padding(10),
-                slider(0.0..=1.0, *progress, |_| Message::EncodingProgress(ProgressUpdate {
-                    percentage: (*progress * 100.0) as f32,
-                    current_frame: 0,
-                    total_frames: 0,
-                    fps: 0.0,
-                    eta: String::new()
-                }))
-                .width(500),
-                text(format!("{:.1}%", progress * 100.0)).width(50)
-            ]
-            .spacing(10)
-            .padding(5),
+        let encoding_controls: Element<Message> = match &self.encoding_state {
+            EncodingState::Encoding { progress, fps, eta, current_frame, total_frames, .. } => {
+                println!("VIEW: Rendering encoding state: progress={}, frames={}/{}", 
+                    progress, current_frame, total_frames);
+                
+                column![
+                    row![
+                        button::<Message, Theme, Renderer>("Cancel Encoding")  
+                            .on_press(Message::CancelEncoding)
+                            .padding(10)
+                            .style(Button::Destructive),
+                        slider(0.0..=1.0, *progress, |_| Message::CancelEncoding)
+                            .width(500),
+                        text(format!("{:.1}%", progress * 100.0)).width(50)
+                    ]
+                    .spacing(10)
+                    .padding(5),
+                    row![
+                        text(format!("Frames: {}/{}", current_frame, total_frames)).width(200),
+                        text(if *fps > 0.0 { 
+                            format!("FPS: {:.1}", fps) 
+                        } else { 
+                            "FPS: -".to_string() 
+                        }).width(100),
+                        text(if !eta.is_empty() { 
+                            format!("ETA: {}", eta) 
+                        } else { 
+                            "ETA: -".to_string() 
+                        }).width(100),
+                    ]
+                    .spacing(10)
+                    .padding(5)
+                ].into()
+            }
+            EncodingState::Idle => {
+                println!("VIEW: Rendering idle state");
+                row![
+                    button::<Message, Theme, Renderer>("Start Encoding")  
+                        .on_press(Message::StartEncoding)
+                        .padding(10)
+                        .style(Button::Primary)
+                ].into()
+            }
         };
 
         let preset_control = row![
@@ -820,8 +937,33 @@ impl Application for AV1Studio {
         .into()
     }
 
-    fn subscription(&self) -> Subscription<Self::Message> {
-        Subscription::none()
+    fn subscription(&self) -> Subscription<Message> {
+        match &self.encoding_state {
+            EncodingState::Encoding { .. } => {
+                println!("SUBSCRIPTION: Active");
+                iced::subscription::unfold(
+                    "encoding_progress",
+                    None::<ProgressUpdate>,
+                    |state| async {
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        match state {
+                            Some(progress) => (
+                                Message::EncodingProgress(progress),
+                                None
+                            ),
+                            None => (
+                                Message::EncodingProgress(ProgressUpdate::default()),
+                                None
+                            )
+                        }
+                    }
+                )
+            }
+            EncodingState::Idle => {
+                println!("SUBSCRIPTION: Idle");
+                Subscription::none()
+            }
+        }
     }
 }
 
