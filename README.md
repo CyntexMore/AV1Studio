@@ -11,7 +11,8 @@ As of now, **AV1Studio** has *no* functionality, at all.
 There are a few requirements. Those being:
 
 * Cargo and rustc, of course
-* [Av1an](https://github.com/master-of-zen/Av1an)
+* [KosakaIsMe/Av1an-verbosity](https://github.com/KosakaIsMe/Av1an-verbosity) — Thank you, Kosaka! You saved me with this one.
+* libbestsource, ffms2 (a part of ffmpeg), l-smash
 
 The steps to installing **AV1Studio** are the following:
 
