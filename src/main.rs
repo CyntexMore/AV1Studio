@@ -21,6 +21,9 @@ struct AV1Studio {
     synthetic_grain: String, // Synthetic grain is a String to allow editing
     custom_encode_params: String,
 
+    thread_affinity: String,
+    workers: String,
+
     encoded_frames: Option<u32>,
     total_frames: Option<u32>,
     fps: Option<f64>,
@@ -50,6 +53,8 @@ impl Default for AV1Studio {
             crf: 29.0,
             synthetic_grain: String::new(),
             custom_encode_params: String::new(),
+            thread_affinity: 2.to_string(),
+            workers: 6.to_string(),
             encoded_frames: None,
             total_frames: None,
             fps: None,
@@ -103,80 +108,114 @@ impl AV1Studio {
 impl eframe::App for AV1Studio {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("AV1Studio");
-            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.heading("AV1Studio");
+                ui.separator();
 
-            ui.label("File Options");
-            ui.horizontal(|ui| {
-                ui.label("Input File:");
-                ui.text_edit_singleline(&mut self.input_file);
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Output File:");
-                ui.text_edit_singleline(&mut self.output_file);
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Scenes File:");
-                ui.text_edit_singleline(&mut self.scenes_file);
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Zones File:");
-                ui.text_edit_singleline(&mut self.zones_file);
-            });
-
-            ui.separator();
-
-            ui.label("Source Library:");
-            ComboBox::from_label("")
-                .selected_text(self.source_library.as_str())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut self.source_library,
-                        SourceLibrary::BestSource,
-                        "BestSource",
-                    );
-                    ui.selectable_value(&mut self.source_library, SourceLibrary::FFMS2, "FFMS2");
-                    ui.selectable_value(&mut self.source_library, SourceLibrary::LSMASH, "L-SMASH");
+                ui.label("File Options");
+                ui.horizontal(|ui| {
+                    ui.label("Input File:");
+                    ui.text_edit_singleline(&mut self.input_file);
                 });
 
-            ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label("Output File:");
+                    ui.text_edit_singleline(&mut self.output_file);
+                });
 
-            ui.label("(Output) Resolution:");
-            ui.horizontal(|ui| {
-                ui.label("Width:");
-                ui.text_edit_singleline(&mut self.width);
-                ui.label("×");
-                ui.label("Height:");
-                ui.text_edit_singleline(&mut self.height);
+                ui.horizontal(|ui| {
+                    ui.label("Scenes File:");
+                    ui.text_edit_singleline(&mut self.scenes_file);
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("Zones File:");
+                    ui.text_edit_singleline(&mut self.zones_file);
+                });
+
+                ui.separator();
+
+                ui.label("Source Library:");
+                ComboBox::from_id_salt("source_library_combobox")
+                    .selected_text(self.source_library.as_str())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.source_library,
+                            SourceLibrary::BestSource,
+                            "BestSource",
+                        );
+                        ui.selectable_value(
+                            &mut self.source_library,
+                            SourceLibrary::FFMS2,
+                            "FFMS2",
+                        );
+                        ui.selectable_value(
+                            &mut self.source_library,
+                            SourceLibrary::LSMASH,
+                            "L-SMASH",
+                        );
+                    });
+
+                ui.separator();
+
+                ui.label("(Output) Pixel Format:");
+                ComboBox::from_id_salt("output_pixel_format_combobox")
+                    .selected_text(self.output_pixel_format.as_str())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.output_pixel_format,
+                            PixelFormat::Yuv420p10le,
+                            "yuv420p10le",
+                        );
+                        ui.selectable_value(
+                            &mut self.output_pixel_format,
+                            PixelFormat::Yuv420p,
+                            "yuv420p",
+                        );
+                    });
+
+                ui.separator();
+
+                ui.label("(Output) Resolution:");
+                ui.horizontal(|ui| {
+                    ui.label("Width:");
+                    ui.text_edit_singleline(&mut self.width);
+                    ui.label("×");
+                    ui.label("Height:");
+                    ui.text_edit_singleline(&mut self.height);
+                });
+
+                ui.separator();
+
+                ui.label("Preset:");
+                ui.add(Slider::new(&mut self.preset, 0.0..=13.0).step_by(1.0));
+
+                ui.label("CRF:");
+                ui.add(Slider::new(&mut self.crf, 0.0..=63.0).step_by(1.0));
+
+                ui.separator();
+
+                ui.label("Synthetic Grain:");
+                ui.text_edit_singleline(&mut self.synthetic_grain);
+
+                ui.separator();
+
+                ui.label("Custom Encoder Parameters:");
+                ui.text_edit_multiline(&mut self.custom_encode_params);
+
+                ui.separator();
+
+                ui.label("Thread Affinity:");
+                ui.text_edit_multiline(&mut self.thread_affinity);
+
+                ui.label("Workers:");
+                ui.text_edit_multiline(&mut self.workers);
+
+                if ui.button("Start Encoding").clicked() {
+                    println!("Start Encoding button pressed");
+                    start_encoding(self);
+                }
             });
-
-            ui.separator();
-
-            ui.label("Preset:");
-            ui.add(Slider::new(&mut self.preset, 0.0..=13.0).step_by(1.0));
-
-            ui.label("CRF:");
-            ui.add(Slider::new(&mut self.crf, 0.0..=63.0).step_by(1.0));
-
-            ui.separator();
-
-            ui.label("Synthetic Grain:");
-            ui.text_edit_singleline(&mut self.synthetic_grain);
-
-            ui.separator();
-
-            ui.label("Custom Encoder Parameters:");
-            ui.text_edit_multiline(&mut self.custom_encode_params);
-
-            ui.separator();
-
-            if ui.button("Start Encoding").clicked() {
-                println!("Start Encoding button pressed");
-                start_encoding(self);
-            }
         });
     }
 }
@@ -214,6 +253,8 @@ fn start_encoding(state: &mut AV1Studio) {
     command.push_str(&format!(" -i \"{}\"", state.input_file));
     command.push_str(&format!(" -o \"{}\"", state.output_file));
 
+    command.push_str(&format!(" --verbose-frame-info"));
+
     if !state.scenes_file.is_empty() {
         command.push_str(&format!(" --scenes \"{}\"", state.scenes_file));
     }
@@ -229,7 +270,7 @@ fn start_encoding(state: &mut AV1Studio) {
 
     if !state.width.is_empty() && !state.height.is_empty() {
         command.push_str(&format!(
-            " -f \"-vf scale={}:{} \"",
+            " -f \"-vf scale={}:{}:flags=bicubic:param0=0:param1=1/2 \"",
             state.width, state.height
         ));
     } else if !state.width.is_empty() || !state.height.is_empty() {
@@ -250,12 +291,15 @@ fn start_encoding(state: &mut AV1Studio) {
             "--tune 2 --keyint 1 --lp 2 --irefresh-type 2 --crf {} --preset {} --film-grain {}",
             state.crf, state.preset, state.synthetic_grain
         );
+        command.push_str(" --force");
         command.push_str(&format!(" -v \"{}\"", encode_params));
     }
 
-    command.push_str(" --force");
-
-    command.push_str(" --set-thread-affinity 2  -w 6");
+    let worker_settings = format!(
+        "--thread-affinity {} -w {}",
+        state.thread_affinity, state.workers
+    );
+    command.push_str(&format!(" {}", worker_settings));
 
     println!("Av1an command: {}", command);
 }
