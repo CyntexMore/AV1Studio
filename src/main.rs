@@ -1,5 +1,10 @@
 use std::default;
 
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
+
+use eframe::glow::LINEAR_MIPMAP_NEAREST;
 use egui::widgets::{Button, Slider};
 use egui::{Color32, ComboBox, ProgressBar, Style, TextStyle, Ui, Visuals};
 use regex::{Captures, Regex};
@@ -34,6 +39,9 @@ struct AV1Studio {
     total_frames: Option<u32>,
     fps: Option<f64>,
     eta_time: Option<String>,
+
+    encoding_in_progress: bool,
+    receiver: Option<mpsc::Receiver<String>>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Default)]
@@ -67,6 +75,8 @@ impl Default for AV1Studio {
             total_frames: None,
             fps: None,
             eta_time: None,
+            encoding_in_progress: false,
+            receiver: None,
         }
     }
 }
@@ -233,16 +243,76 @@ impl eframe::App for AV1Studio {
                 ui.separator();
 
                 if ui.button("Start Encoding").clicked() {
-                    println!("Start Encoding button pressed");
-                    start_encoding(self);
+                    let mut cmd = generate_command(self);
+                    println!("{:?}", cmd);
+                    let (sender, receiver) = mpsc::channel();
+                    self.receiver = Some(receiver);
+                    self.encoding_in_progress = true;
+
+                    std::thread::spawn(move || {
+                        let mut child = cmd
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()
+                            .expect("failed to start av1an");
+
+                        let stdout = child.stdout.take().unwrap();
+                        let stderr = child.stderr.take().unwrap();
+                        let sender_stdout = sender.clone();
+                        let sender_stderr = sender.clone();
+
+                        std::thread::spawn(move || {
+                            let reader = BufReader::new(stdout);
+                            for line in reader.lines() {
+                                if let Ok(line) = line {
+                                    sender_stdout.send(line).unwrap();
+                                }
+                            }
+                        });
+
+                        std::thread::spawn(move || {
+                            let reader = BufReader::new(stderr);
+                            for line in reader.lines() {
+                                if let Ok(line) = line {
+                                    sender_stderr.send(line).unwrap();
+                                }
+                            }
+                        });
+
+                        let _ = child.wait();
+                    });
                 }
 
-                let ef: u32 = self.encoded_frames.unwrap_or(0);
-                let tf: u32 = self.total_frames.unwrap_or(0);
+                if self.encoding_in_progress {
+                    if let Some(receiver) = &self.receiver {
+                        loop {
+                            match receiver.try_recv() {
+                                Ok(line) => {
+                                    println!("Received from channel: {}", line);
+                                    parse_av1an_output(
+                                        &line,
+                                        &mut self.encoded_frames,
+                                        &mut self.total_frames,
+                                        &mut self.fps,
+                                        &mut self.eta_time,
+                                    )
+                                }
+                                Err(mpsc::TryRecvError::Empty) => break,
+                                Err(mpsc::TryRecvError::Disconnected) => {
+                                    self.encoding_in_progress = false;
+                                    self.receiver = None;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
 
-                let mut progress: f32 = ef as f32 / tf as f32;
-
-                ui.label("Progress:");
+                let (ef, tf) = (
+                    self.encoded_frames.unwrap_or(0),
+                    self.total_frames.unwrap_or(0),
+                );
+                let progress = if tf == 0 { 0.0 } else { ef as f32 / tf as f32 };
                 ui.add(ProgressBar::new(progress).show_percentage());
 
                 ui.horizontal(|ui| {
@@ -254,111 +324,88 @@ impl eframe::App for AV1Studio {
     }
 }
 
-fn parse_av1an_output(output: &str, state: &mut AV1Studio) {
-    let re = Regex::new(r"(\d+)/(\d+) \(([\d\.]+) (?:s/fr|fps), eta ([\dsmh]+)\)").unwrap();
+fn parse_av1an_output(
+    output: &str,
+    encoded_frames: &mut Option<u32>,
+    total_frames: &mut Option<u32>,
+    fps: &mut Option<f64>,
+    eta_time: &mut Option<String>,
+) {
+    println!("parse_av1an_output called with: {}", output);
+    let re = Regex::new(r"(\d+)\s+(\d+)").unwrap();
 
     for line in output.lines() {
         if let Some(caps) = re.captures(line) {
-            let encoded_frames = caps
-                .get(1)
-                .map(|m| m.as_str().parse::<u32>().ok())
-                .flatten();
-            let total_frames = caps
-                .get(2)
-                .map(|m| m.as_str().parse::<u32>().ok())
-                .flatten();
-            let fps = caps
-                .get(3)
-                .map(|m| m.as_str().parse::<f64>().ok())
-                .flatten();
-            let eta_time = caps.get(4).map(|m| m.as_str().to_string());
-
-            state.encoded_frames = encoded_frames;
-            state.total_frames = total_frames;
-            state.fps = fps;
-            state.eta_time = eta_time;
+            *encoded_frames = caps.get(1).and_then(|m| m.as_str().parse().ok());
+            *total_frames = caps.get(2).and_then(|m| m.as_str().parse().ok());
+            *fps = caps.get(3).and_then(|m| m.as_str().parse().ok());
+            *eta_time = caps.get(4).map(|m| m.as_str().to_string());
         }
     }
 }
 
-fn start_encoding(state: &mut AV1Studio) {
-    let mut command: String;
-
-    if state.av1an_verbosity_path.is_empty() {
-        command = String::from("av1an-verbosity");
+fn generate_command(state: &AV1Studio) -> Command {
+    let mut cmd = if state.av1an_verbosity_path.is_empty() {
+        Command::new("av1an-verbosity")
     } else {
-        command = String::from(&format!("{}", state.av1an_verbosity_path));
-    }
+        Command::new(&state.av1an_verbosity_path)
+    };
 
+    // Build command arguments
     if !state.input_file.is_empty() {
-        command.push_str(&format!(" -i \"{}\"", state.input_file));
-    } else {
-        println!("WARNING : You have to specify an input file.");
+        cmd.arg("-i").arg(&state.input_file);
     }
-
     if !state.output_file.is_empty() {
-        command.push_str(&format!(" -o \"{}\"", state.output_file));
-    } else {
-        println!("WARNING : You have to specify an output file.");
+        cmd.arg("-o").arg(&state.output_file);
     }
-
     if !state.scenes_file.is_empty() {
-        command.push_str(&format!(" --scenes \"{}\"", state.scenes_file));
+        cmd.arg("--scenes").arg(&state.scenes_file);
     }
-
-    if !state.scenes_file.is_empty() {
-        command.push_str(&format!(" --zones \"{}\"", state.zones_file));
+    if !state.zones_file.is_empty() {
+        cmd.arg("--zones").arg(&state.zones_file);
     }
+    cmd.arg("--verbose-frame-info")
+        .arg("--split-method")
+        .arg("av-scenechange");
 
-    command.push_str(&format!(" --verbose-frame-info"));
-
-    command.push_str(&format!(" --split-method av-scenechange"));
-
-    if !state.file_concatenation.is_empty() {
-        command.push_str(&format!(" -c {}", state.file_concatenation));
+    cmd.arg("-c").arg(if !state.file_concatenation.is_empty() {
+        &state.file_concatenation
     } else {
-        command.push_str(&format!(" -c mkvmerge"));
-    }
+        "mkvmerge"
+    });
 
-    command.push_str(&format!(
-        " -m {}",
-        state.source_library.as_str().to_lowercase()
-    ));
+    cmd.arg("-m")
+        .arg(state.source_library.as_str().to_lowercase());
 
     if !state.width.is_empty() && !state.height.is_empty() {
-        command.push_str(&format!(
-            " -f \"-vf scale={}:{}:flags=bicubic:param0=0:param1=1/2 \"",
+        let scale = format!(
+            "scale={}:{}:flags=bicubic:param0=0:param1=1/2",
             state.width, state.height
-        ));
-    } else if !state.width.is_empty() || !state.height.is_empty() {
-        println!("Warning: Both width and height need to be specified for resolution adjustments.");
+        );
+        cmd.arg("-f").arg(format!("-vf {}", scale));
     }
 
-    command.push_str(&format!(
-        " --pix-format {}",
-        state.output_pixel_format.as_str()
-    ));
-
-    command.push_str(&format!(" -e svt-av1"));
+    cmd.arg("--pix-format")
+        .arg(state.output_pixel_format.as_str())
+        .arg("-e")
+        .arg("svt-av1");
 
     if !state.custom_encode_params.is_empty() {
-        command.push_str(&format!(" -v \"{}\"", state.custom_encode_params));
+        cmd.arg("-v").arg(&state.custom_encode_params);
     } else {
-        let encode_params = format!(
+        let params = format!(
             "--tune 2 --keyint 1 --lp 2 --irefresh-type 2 --crf {} --preset {} --film-grain {}",
             state.crf, state.preset, state.synthetic_grain
         );
-        command.push_str(" --force");
-        command.push_str(&format!(" -v \"{}\"", encode_params));
+        cmd.arg("--force").arg("-v").arg(params);
     }
 
-    let worker_settings = format!(
-        "--thread-affinity {} -w {}",
-        state.thread_affinity, state.workers
-    );
-    command.push_str(&format!(" {}", worker_settings));
+    cmd.arg("--set-thread-affinity")
+        .arg(&state.thread_affinity)
+        .arg("-w")
+        .arg(&state.workers);
 
-    println!("Av1an command: {}", command);
+    cmd
 }
 
 fn main() -> Result<(), eframe::Error> {
