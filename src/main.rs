@@ -1,7 +1,7 @@
 use std::default;
 
 use egui::widgets::{Button, Slider};
-use egui::{Color32, ComboBox, Style, TextStyle, Ui, Visuals};
+use egui::{Color32, ComboBox, ProgressBar, Style, TextStyle, Ui, Visuals};
 use regex::{Captures, Regex};
 
 struct AV1Studio {
@@ -230,10 +230,20 @@ impl eframe::App for AV1Studio {
                 ui.label("Workers:");
                 ui.text_edit_multiline(&mut self.workers);
 
+                ui.separator();
+
                 if ui.button("Start Encoding").clicked() {
                     println!("Start Encoding button pressed");
                     start_encoding(self);
                 }
+
+                let ef: u32 = self.encoded_frames.unwrap_or(0);
+                let tf: u32 = self.total_frames.unwrap_or(0);
+
+                let mut progress: f32 = ef as f32 / tf as f32;
+
+                ui.label("Progress:");
+                ui.add(ProgressBar::new(progress).show_percentage());
             });
         });
     }
