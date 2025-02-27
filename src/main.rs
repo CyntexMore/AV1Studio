@@ -1,7 +1,7 @@
 use egui::widgets::{Button, Slider};
 use egui::{Color32, ComboBox, Style, TextStyle, Ui, Visuals};
+use regex::{Captures, Regex};
 
-#[derive(Default)]
 struct AV1Studio {
     // TODO: Add file dialogs with rfd
     input_file: String,
@@ -20,18 +20,41 @@ struct AV1Studio {
     crf: f32,
     synthetic_grain: String, // Synthetic grain is a String to allow editing
     custom_encode_params: String,
+
+    encoded_frames: Option<u32>,
+    total_frames: Option<u32>,
+    fps: Option<f64>,
+    eta_time: Option<String>,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Default)]
 enum SourceLibrary {
+    #[default]
     BestSource,
     FFMS2,
     LSMASH,
 }
 
-impl Default for SourceLibrary {
+impl Default for AV1Studio {
     fn default() -> Self {
-        SourceLibrary::BestSource
+        AV1Studio {
+            input_file: String::new(),
+            output_file: String::new(),
+            scenes_file: String::new(),
+            zones_file: String::new(),
+            source_library: SourceLibrary::default(),
+            width: String::new(),
+            height: String::new(),
+            output_pixel_format: PixelFormat::default(),
+            preset: 4.0,
+            crf: 29.0,
+            synthetic_grain: String::new(),
+            custom_encode_params: String::new(),
+            encoded_frames: None,
+            total_frames: None,
+            fps: None,
+            eta_time: None,
+        }
     }
 }
 
@@ -152,17 +175,43 @@ impl eframe::App for AV1Studio {
 
             if ui.button("Start Encoding").clicked() {
                 println!("Start Encoding button pressed");
-
-                start_encoding(&self);
+                start_encoding(self);
             }
         });
     }
 }
 
-fn start_encoding(state: &AV1Studio) {
+fn parse_av1an_output(output: &str, state: &mut AV1Studio) {
+    let re = Regex::new(r"(\d+)/(\d+) \(([\d\.]+) (?:s/fr|fps), eta ([\dsmh]+)\)").unwrap();
+
+    for line in output.lines() {
+        if let Some(caps) = re.captures(line) {
+            let encoded_frames = caps
+                .get(1)
+                .map(|m| m.as_str().parse::<u32>().ok())
+                .flatten();
+            let total_frames = caps
+                .get(2)
+                .map(|m| m.as_str().parse::<u32>().ok())
+                .flatten();
+            let fps = caps
+                .get(3)
+                .map(|m| m.as_str().parse::<f64>().ok())
+                .flatten();
+            let eta_time = caps.get(4).map(|m| m.as_str().to_string());
+
+            state.encoded_frames = encoded_frames;
+            state.total_frames = total_frames;
+            state.fps = fps;
+            state.eta_time = eta_time;
+        }
+    }
+}
+
+fn start_encoding(state: &mut AV1Studio) {
     println!("Encoding with parameters:");
     println!("Input File: {}", state.input_file);
-    println!("Output FIle: {}", state.output_file);
+    println!("Output File: {}", state.output_file);
 }
 
 fn main() -> Result<(), eframe::Error> {
