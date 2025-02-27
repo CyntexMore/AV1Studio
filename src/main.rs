@@ -212,6 +212,15 @@ fn start_encoding(state: &mut AV1Studio) {
     println!("Encoding with parameters:");
     println!("Input File: {}", state.input_file);
     println!("Output File: {}", state.output_file);
+    println!("Scenes File: {}", state.scenes_file);
+    println!("Zones File: {}", state.zones_file);
+    println!("Source Library: {}", state.source_library);
+    println!("Resolution: {} × {}", state.width, state.height);
+    println!("Output Pixel Format: {}", state.output_pixel_format);
+    println!("Preset: {}", state.preset);
+    println!("CRF: {}", state.crf);
+    println!("Synthetic Grain: {}", state.synthetic_grain);
+    println!("Custom Encode Params: {}", state.custom_encode_params);
 }
 
 fn main() -> Result<(), eframe::Error> {
