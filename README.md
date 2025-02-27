@@ -24,7 +24,7 @@ git clone https://github.com/CyntexMore/AV1Studio.git
 2. Enter the AV1Studio directory, and compile the program.
 
 ```bash
-cargo build --released
+cargo build --release
 ```
 (The built binaries are now located in `./target`.)
 
