@@ -4,7 +4,7 @@
 
 ## Development
 
-As of now, **AV1Studio** has *no* functionality, at all.
+As of now, **AV1Studio** is barely functional and has a lot of bugs.
 
 ## Installing
 
