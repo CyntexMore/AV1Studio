@@ -1,3 +1,5 @@
+use std::default;
+
 use egui::widgets::{Button, Slider};
 use egui::{Color32, ComboBox, Style, TextStyle, Ui, Visuals};
 use regex::{Captures, Regex};
@@ -15,6 +17,8 @@ struct AV1Studio {
     height: String,
 
     output_pixel_format: PixelFormat,
+
+    file_concatenation: String,
 
     preset: f32,
     crf: f32,
@@ -49,6 +53,7 @@ impl Default for AV1Studio {
             width: String::new(),
             height: String::new(),
             output_pixel_format: PixelFormat::default(),
+            file_concatenation: String::new(),
             preset: 4.0,
             crf: 29.0,
             synthetic_grain: String::new(),
@@ -158,6 +163,11 @@ impl eframe::App for AV1Studio {
 
                 ui.separator();
 
+                ui.label("File Concatenation:");
+                ui.text_edit_singleline(&mut self.file_concatenation);
+
+                ui.separator();
+
                 ui.label("(Output) Pixel Format:");
                 ComboBox::from_id_salt("output_pixel_format_combobox")
                     .selected_text(self.output_pixel_format.as_str())
@@ -253,14 +263,22 @@ fn start_encoding(state: &mut AV1Studio) {
     command.push_str(&format!(" -i \"{}\"", state.input_file));
     command.push_str(&format!(" -o \"{}\"", state.output_file));
 
-    command.push_str(&format!(" --verbose-frame-info"));
-
     if !state.scenes_file.is_empty() {
         command.push_str(&format!(" --scenes \"{}\"", state.scenes_file));
     }
 
     if !state.scenes_file.is_empty() {
         command.push_str(&format!(" --zones \"{}\"", state.zones_file));
+    }
+
+    command.push_str(&format!(" --verbose-frame-info"));
+
+    command.push_str(&format!(" --split-method av-scenechange"));
+
+    if !state.file_concatenation.is_empty() {
+        command.push_str(&format!(" -c {}", state.file_concatenation));
+    } else {
+        command.push_str(&format!(" -c mkvmerge"));
     }
 
     command.push_str(&format!(
