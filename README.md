@@ -8,6 +8,11 @@ As of now, **AV1Studio** has *no* functionality, at all.
 
 ## Installing
 
+There are a few requirements. Those being:
+
+* Cargo and rustc, of course
+* [Av1an](https://github.com/master-of-zen/Av1an)
+
 The steps to installing **AV1Studio** are the following:
 
 1. Git clone the repository.
