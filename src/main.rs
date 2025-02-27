@@ -5,6 +5,8 @@ use egui::{Color32, ComboBox, Style, TextStyle, Ui, Visuals};
 use regex::{Captures, Regex};
 
 struct AV1Studio {
+    av1an_verbosity_path: String,
+
     // TODO: Add file dialogs with rfd
     input_file: String,
     output_file: String,
@@ -45,6 +47,7 @@ enum SourceLibrary {
 impl Default for AV1Studio {
     fn default() -> Self {
         AV1Studio {
+            av1an_verbosity_path: String::new(),
             input_file: String::new(),
             output_file: String::new(),
             scenes_file: String::new(),
@@ -115,6 +118,12 @@ impl eframe::App for AV1Studio {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AV1Studio");
+
+                ui.separator();
+
+                ui.label("Av1an-verbosity Path:");
+                ui.text_edit_singleline(&mut self.av1an_verbosity_path);
+
                 ui.separator();
 
                 ui.label("File Options");
@@ -258,10 +267,25 @@ fn parse_av1an_output(output: &str, state: &mut AV1Studio) {
 }
 
 fn start_encoding(state: &mut AV1Studio) {
-    let mut command = String::from("av1an-verbosity");
+    let mut command: String;
 
-    command.push_str(&format!(" -i \"{}\"", state.input_file));
-    command.push_str(&format!(" -o \"{}\"", state.output_file));
+    if state.av1an_verbosity_path.is_empty() {
+        command = String::from("av1an-verbosity");
+    } else {
+        command = String::from(&format!("{}", state.av1an_verbosity_path));
+    }
+
+    if !state.input_file.is_empty() {
+        command.push_str(&format!(" -i \"{}\"", state.input_file));
+    } else {
+        println!("WARNING : You have to specify an input file.");
+    }
+
+    if !state.output_file.is_empty() {
+        command.push_str(&format!(" -o \"{}\"", state.output_file));
+    } else {
+        println!("WARNING : You have to specify an output file.");
+    }
 
     if !state.scenes_file.is_empty() {
         command.push_str(&format!(" --scenes \"{}\"", state.scenes_file));
