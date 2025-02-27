@@ -244,6 +244,11 @@ impl eframe::App for AV1Studio {
 
                 ui.label("Progress:");
                 ui.add(ProgressBar::new(progress).show_percentage());
+
+                ui.horizontal(|ui| {
+                    ui.label("Encoded frames | Total frames:");
+                    ui.label(&format!("{} | {}", ef, tf));
+                });
             });
         });
     }
