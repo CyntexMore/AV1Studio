@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 eframe = "0.31.0"
 egui = "0.31.0"
+regex = "1.11.1"
