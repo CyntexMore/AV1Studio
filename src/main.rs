@@ -209,9 +209,55 @@ fn parse_av1an_output(output: &str, state: &mut AV1Studio) {
 }
 
 fn start_encoding(state: &mut AV1Studio) {
-    println!("Encoding with parameters:");
-    println!("Input File: {}", state.input_file);
-    println!("Output File: {}", state.output_file);
+    let mut command = String::from("av1an-verbosity");
+
+    command.push_str(&format!(" -i \"{}\"", state.input_file));
+    command.push_str(&format!(" -o \"{}\"", state.output_file));
+
+    if !state.scenes_file.is_empty() {
+        command.push_str(&format!(" --scenes \"{}\"", state.scenes_file));
+    }
+
+    if !state.scenes_file.is_empty() {
+        command.push_str(&format!(" --zones \"{}\"", state.zones_file));
+    }
+
+    command.push_str(&format!(
+        " -m {}",
+        state.source_library.as_str().to_lowercase()
+    ));
+
+    if !state.width.is_empty() && !state.height.is_empty() {
+        command.push_str(&format!(
+            " -f \"-vf scale={}:{} \"",
+            state.width, state.height
+        ));
+    } else if !state.width.is_empty() || !state.height.is_empty() {
+        println!("Warning: Both width and height need to be specified for resolution adjustments.");
+    }
+
+    command.push_str(&format!(
+        " --pix-format {}",
+        state.output_pixel_format.as_str()
+    ));
+
+    command.push_str(&format!(" -e svt-av1"));
+
+    if !state.custom_encode_params.is_empty() {
+        command.push_str(&format!(" -v \"{}\"", state.custom_encode_params));
+    } else {
+        let encode_params = format!(
+            "--tune 2 --keyint 1 --lp 2 --irefresh-type 2 --crf {} --preset {} --film-grain {}",
+            state.crf, state.preset, state.synthetic_grain
+        );
+        command.push_str(&format!(" -v \"{}\"", encode_params));
+    }
+
+    command.push_str(" --force");
+
+    command.push_str(" --set-thread-affinity 2  -w 6");
+
+    println!("Av1an command: {}", command);
 }
 
 fn main() -> Result<(), eframe::Error> {
