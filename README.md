@@ -12,7 +12,12 @@ There are a few requirements. Those being:
 
 * Cargo and rustc, of course
 * [KosakaIsMe/Av1an-verbosity](https://github.com/KosakaIsMe/Av1an-verbosity) — Thank you, Kosaka! You saved me with this one.
-* libbestsource, ffms2 (a part of ffmpeg), l-smash
+  * Place the built binary into `/usr/local/bin` with the file name `av1an-verbosity`, or provide the full path to Av1an-verbosity from the GUI.
+* [FFmpeg](https://ffmpeg.org/download.html)
+* [VapourSynth](https://github.com/vapoursynth/vapoursynth/releases)
+* [SVT-AV1-PSY](https://github.com/psy-ex/svt-av1-psy)
+* mkvmerge
+* libbestsource, ffms2 (a part of FFmpeg), l-smash
 
 The steps to installing **AV1Studio** are the following:
 
