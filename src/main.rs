@@ -319,6 +319,8 @@ impl eframe::App for AV1Studio {
                     ui.label("Encoded frames | Total frames:");
                     ui.label(&format!("{} | {}", ef, tf));
                 });
+
+                ctx.request_repaint();
             });
         });
     }
