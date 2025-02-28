@@ -9,6 +9,8 @@ use egui::widgets::{Button, Slider};
 use egui::{Color32, ComboBox, ProgressBar, Style, TextStyle, Ui, Visuals};
 use regex::{Captures, Regex};
 
+use rfd::FileDialog;
+
 struct AV1Studio {
     av1an_verbosity_path: String,
 
@@ -140,21 +142,53 @@ impl eframe::App for AV1Studio {
                 ui.horizontal(|ui| {
                     ui.label("Input File:");
                     ui.text_edit_singleline(&mut self.input_file);
+                    if ui.button("Browse").clicked() {
+                        if let Some(path) = FileDialog::new()
+                            .add_filter("Video Files", &[".mkv"])
+                            .pick_file()
+                        {
+                            self.input_file = path.display().to_string();
+                        }
+                    }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Output File:");
                     ui.text_edit_singleline(&mut self.output_file);
+                    if ui.button("Browse").clicked() {
+                        if let Some(path) = FileDialog::new()
+                            .add_filter("Video Files", &["mkv"])
+                            .pick_file()
+                        {
+                            self.output_file = path.display().to_string();
+                        }
+                    }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Scenes File:");
                     ui.text_edit_singleline(&mut self.scenes_file);
+                    if ui.button("Browse").clicked() {
+                        if let Some(path) = FileDialog::new()
+                            .add_filter("JSON Files", &["json"])
+                            .pick_file()
+                        {
+                            self.scenes_file = path.display().to_string();
+                        }
+                    }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Zones File:");
                     ui.text_edit_singleline(&mut self.zones_file);
+                    if ui.button("Browse").clicked() {
+                        if let Some(path) = FileDialog::new()
+                            .add_filter("TXT Files", &["txt"])
+                            .pick_file()
+                        {
+                            self.zones_file = path.display().to_string();
+                        }
+                    }
                 });
 
                 ui.separator();
