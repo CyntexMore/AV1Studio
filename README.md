@@ -37,7 +37,7 @@ or
 ```bash
 cargo install --git https://github.com/CyntexMore/AV1Studio.git
 ```
-(The built binary are now located in `./target`.)
+(The built binary is now located in `./target`.)
 
 3. (Optionally and for Linux only) Move the built binary to `/usr/local/bin` and make a .desktop file for it.
 
