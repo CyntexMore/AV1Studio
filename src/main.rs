@@ -352,8 +352,8 @@ impl eframe::App for AV1Studio {
                 }
 
                 let (ef, tf) = (
-                    self.encoded_frames.unwrap_or(0),
-                    self.total_frames.unwrap_or(0),
+                    self.encoded_frames.unwrap_or_default(),
+                    self.total_frames.unwrap_or_default(),
                 );
                 let progress = if tf == 0 { 0.0 } else { ef as f32 / tf as f32 };
                 ui.add(ProgressBar::new(progress).show_percentage());
