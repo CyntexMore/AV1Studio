@@ -1,13 +1,10 @@
-use std::default;
-
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 
-use eframe::glow::LINEAR_MIPMAP_NEAREST;
-use egui::widgets::{Button, Slider};
-use egui::{Color32, ComboBox, ProgressBar, Style, TextStyle, Ui, Visuals};
-use regex::{Captures, Regex};
+use egui::widgets::Slider;
+use egui::{ComboBox, ProgressBar, TextStyle};
+use regex::Regex;
 
 use rfd::FileDialog;
 
@@ -119,6 +116,7 @@ impl AV1Studio {
         let mut style = (*cc.egui_ctx.style()).clone();
         style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 18.0;
         style.text_styles.get_mut(&TextStyle::Heading).unwrap().size = 24.0;
+
         cc.egui_ctx.set_style(style);
 
         Self::default()
@@ -126,7 +124,7 @@ impl AV1Studio {
 }
 
 impl eframe::App for AV1Studio {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AV1Studio");
