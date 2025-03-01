@@ -17,7 +17,7 @@ There are a few requirements. Those being:
 * [VapourSynth](https://github.com/vapoursynth/vapoursynth/releases)
 * [SVT-AV1-PSY](https://github.com/psy-ex/svt-av1-psy)
 * mkvmerge
-* libbestsource, ffms2 (a part of FFmpeg), l-smash
+* libbestsource, ffms2 (a part of FFmpeg), l-smash; only of the three has to be installed
 * XDG Desktop Portal
 
 The steps to installing **AV1Studio** are the following:
@@ -33,9 +33,13 @@ git clone https://github.com/CyntexMore/AV1Studio.git
 ```bash
 cargo build --release
 ```
-(The built binaries are now located in `./target`.)
+or
+```bash
+cargo install --git https://github.com/CyntexMore/AV1Studio.git
+```
+(The built binary are now located in `./target`.)
 
-3. (Optionally and for Linux only) Move the built binaries to `/usr/local/bin` and make a .desktop file for it.
+3. (Optionally and for Linux only) Move the built binary to `/usr/local/bin` and make a .desktop file for it.
 
 ## License
 
