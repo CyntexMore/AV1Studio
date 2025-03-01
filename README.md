@@ -18,7 +18,7 @@ There are a few requirements. Those being:
 * [SVT-AV1-PSY](https://github.com/psy-ex/svt-av1-psy)
 * mkvmerge
 * libbestsource, ffms2 (a part of FFmpeg), l-smash
-* gtk3 and XDG Desktop Portal, if you're using a Wayland compositor
+* XDG Desktop Portal
 
 The steps to installing **AV1Studio** are the following:
 
