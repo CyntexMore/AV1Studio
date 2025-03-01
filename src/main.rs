@@ -11,7 +11,6 @@ use rfd::FileDialog;
 struct AV1Studio {
     av1an_verbosity_path: String,
 
-    // TODO: Add file dialogs with rfd
     input_file: String,
     output_file: String,
     scenes_file: String,
@@ -66,7 +65,7 @@ impl Default for AV1Studio {
             file_concatenation: String::new(),
             preset: 4.0,
             crf: 29.0,
-            synthetic_grain: String::new(),
+            synthetic_grain: 0.to_string(),
             custom_encode_params: String::new(),
             thread_affinity: 2.to_string(),
             workers: 6.to_string(),
@@ -131,14 +130,16 @@ impl eframe::App for AV1Studio {
 
                 ui.separator();
 
-                ui.label("Av1an-verbosity Path:");
-                ui.text_edit_singleline(&mut self.av1an_verbosity_path);
+                ui.horizontal(|ui| {
+                    ui.label("Av1an-verbosity Path:");
+                    ui.text_edit_singleline(&mut self.av1an_verbosity_path);
+                });
 
                 ui.separator();
 
                 ui.label("File Options");
                 ui.horizontal(|ui| {
-                    ui.label("Input File:");
+                    ui.label("*Input File:");
                     ui.text_edit_singleline(&mut self.input_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -151,7 +152,7 @@ impl eframe::App for AV1Studio {
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("Output File:");
+                    ui.label("*Output File:");
                     ui.text_edit_singleline(&mut self.output_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -191,7 +192,7 @@ impl eframe::App for AV1Studio {
 
                 ui.separator();
 
-                ui.label("Source Library:");
+                ui.label("*Source Library:");
                 ComboBox::from_id_salt("source_library_combobox")
                     .selected_text(self.source_library.as_str())
                     .show_ui(ui, |ui| {
@@ -214,12 +215,14 @@ impl eframe::App for AV1Studio {
 
                 ui.separator();
 
-                ui.label("File Concatenation:");
-                ui.text_edit_singleline(&mut self.file_concatenation);
+                ui.horizontal(|ui| {
+                    ui.label("File Concatenation:");
+                    ui.text_edit_singleline(&mut self.file_concatenation);
+                });
 
                 ui.separator();
 
-                ui.label("(Output) Pixel Format:");
+                ui.label("*(Output) Pixel Format:");
                 ComboBox::from_id_salt("output_pixel_format_combobox")
                     .selected_text(self.output_pixel_format.as_str())
                     .show_ui(ui, |ui| {
@@ -237,7 +240,7 @@ impl eframe::App for AV1Studio {
 
                 ui.separator();
 
-                ui.label("(Output) Resolution:");
+                ui.label("*(Output) Resolution:");
                 ui.horizontal(|ui| {
                     ui.label("Width:");
                     ui.text_edit_singleline(&mut self.width);
@@ -248,29 +251,37 @@ impl eframe::App for AV1Studio {
 
                 ui.separator();
 
-                ui.label("Preset:");
+                ui.label("*Preset:");
                 ui.add(Slider::new(&mut self.preset, 0.0..=13.0).step_by(1.0));
 
-                ui.label("CRF:");
+                ui.label("*CRF:");
                 ui.add(Slider::new(&mut self.crf, 0.0..=63.0).step_by(1.0));
 
                 ui.separator();
 
-                ui.label("Synthetic Grain:");
-                ui.text_edit_singleline(&mut self.synthetic_grain);
+                ui.horizontal(|ui| {
+                    ui.label("*Synthetic Grain:");
+                    ui.text_edit_singleline(&mut self.synthetic_grain);
+                });
 
                 ui.separator();
 
-                ui.label("Custom Encoder Parameters:");
-                ui.text_edit_multiline(&mut self.custom_encode_params);
+                ui.horizontal(|ui| {
+                    ui.label("Custom Encoder Parameters:");
+                    ui.text_edit_singleline(&mut self.custom_encode_params);
+                });
 
                 ui.separator();
 
-                ui.label("Thread Affinity:");
-                ui.text_edit_multiline(&mut self.thread_affinity);
+                ui.horizontal(|ui| {
+                    ui.label("*Thread Affinity:");
+                    ui.text_edit_singleline(&mut self.thread_affinity);
+                });
 
-                ui.label("Workers:");
-                ui.text_edit_multiline(&mut self.workers);
+                ui.horizontal(|ui| {
+                    ui.label("*Workers:");
+                    ui.text_edit_singleline(&mut self.workers);
+                });
 
                 ui.separator();
 
