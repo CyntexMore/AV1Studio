@@ -3,10 +3,12 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 
 use egui::widgets::Slider;
-use egui::{ComboBox, ProgressBar, TextStyle};
+use egui::{ComboBox, ProgressBar, RichText, TextStyle};
 use regex::Regex;
 
 use rfd::FileDialog;
+
+use catppuccin_egui::{set_theme, MOCHA};
 
 struct AV1Studio {
     av1an_verbosity_path: String,
@@ -97,7 +99,7 @@ enum PixelFormat {
 
 impl Default for PixelFormat {
     fn default() -> Self {
-        PixelFormat::Yuv420p
+        PixelFormat::Yuv420p10le
     }
 }
 
@@ -125,19 +127,20 @@ impl AV1Studio {
 impl eframe::App for AV1Studio {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            set_theme(ctx, MOCHA);
+
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AV1Studio");
 
                 ui.separator();
+
+                ui.label(RichText::new("File Options").weak());
 
                 ui.horizontal(|ui| {
                     ui.label("Av1an-verbosity Path:");
                     ui.text_edit_singleline(&mut self.av1an_verbosity_path);
                 });
 
-                ui.separator();
-
-                ui.label("File Options");
                 ui.horizontal(|ui| {
                     ui.label("*Input File:");
                     ui.text_edit_singleline(&mut self.input_file);
@@ -190,88 +193,98 @@ impl eframe::App for AV1Studio {
                     }
                 });
 
-                ui.separator();
+                ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
-                ui.label("*Source Library:");
-                ComboBox::from_id_salt("source_library_combobox")
-                    .selected_text(self.source_library.as_str())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.source_library,
-                            SourceLibrary::BestSource,
-                            "BestSource",
-                        );
-                        ui.selectable_value(
-                            &mut self.source_library,
-                            SourceLibrary::FFMS2,
-                            "FFMS2",
-                        );
-                        ui.selectable_value(
-                            &mut self.source_library,
-                            SourceLibrary::LSMASH,
-                            "L-SMASH",
-                        );
-                    });
+                ui.label(RichText::new("Source Settings").weak());
 
-                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label("*Source Library:");
+                    ComboBox::from_id_salt("source_library_combobox")
+                        .selected_text(self.source_library.as_str())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.source_library,
+                                SourceLibrary::BestSource,
+                                "BestSource",
+                            );
+                            ui.selectable_value(
+                                &mut self.source_library,
+                                SourceLibrary::FFMS2,
+                                "FFMS2",
+                            );
+                            ui.selectable_value(
+                                &mut self.source_library,
+                                SourceLibrary::LSMASH,
+                                "L-SMASH",
+                            );
+                        });
+                });
 
                 ui.horizontal(|ui| {
                     ui.label("File Concatenation:");
                     ui.text_edit_singleline(&mut self.file_concatenation);
                 });
 
-                ui.separator();
+                ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
-                ui.label("*(Output) Pixel Format:");
-                ComboBox::from_id_salt("output_pixel_format_combobox")
-                    .selected_text(self.output_pixel_format.as_str())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.output_pixel_format,
-                            PixelFormat::Yuv420p10le,
-                            "yuv420p10le",
-                        );
-                        ui.selectable_value(
-                            &mut self.output_pixel_format,
-                            PixelFormat::Yuv420p,
-                            "yuv420p",
-                        );
-                    });
+                ui.label(RichText::new("Video Settings").weak());
 
-                ui.separator();
-
-                ui.label("*(Output) Resolution:");
                 ui.horizontal(|ui| {
-                    ui.label("Width:");
+                    ui.label("*(Output) Resolution:");
                     ui.text_edit_singleline(&mut self.width);
                     ui.label("×");
-                    ui.label("Height:");
                     ui.text_edit_singleline(&mut self.height);
                 });
 
-                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label("*(Output) Pixel Format:");
+                    ComboBox::from_id_salt("output_pixel_format_combobox")
+                        .selected_text(self.output_pixel_format.as_str())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.output_pixel_format,
+                                PixelFormat::Yuv420p10le,
+                                "yuv420p10le",
+                            );
+                            ui.selectable_value(
+                                &mut self.output_pixel_format,
+                                PixelFormat::Yuv420p,
+                                "yuv420p",
+                            );
+                        });
+                });
 
-                ui.label("*Preset:");
-                ui.add(Slider::new(&mut self.preset, 0.0..=13.0).step_by(1.0));
+                ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
-                ui.label("*CRF:");
-                ui.add(Slider::new(&mut self.crf, 0.0..=63.0).step_by(1.0));
+                ui.label(RichText::new("Encoding Parameters").weak());
 
-                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label("*Preset:");
+                    ui.add(
+                        Slider::new(&mut self.preset, 0.0..=13.0)
+                            .step_by(1.0)
+                            .custom_formatter(|n, _| format!("{}", n as i32)),
+                    );
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("*CRF:");
+                    ui.add(Slider::new(&mut self.crf, 0.0..=63.0).step_by(1.0));
+                });
 
                 ui.horizontal(|ui| {
                     ui.label("*Synthetic Grain:");
                     ui.text_edit_singleline(&mut self.synthetic_grain);
                 });
 
-                ui.separator();
-
                 ui.horizontal(|ui| {
                     ui.label("Custom Encoder Parameters:");
                     ui.text_edit_singleline(&mut self.custom_encode_params);
                 });
 
-                ui.separator();
+                ui.add_space(ui.spacing().item_spacing.y * 2.0);
+
+                ui.label(RichText::new("Performance Settings").weak());
 
                 ui.horizontal(|ui| {
                     ui.label("*Thread Affinity:");
@@ -283,7 +296,7 @@ impl eframe::App for AV1Studio {
                     ui.text_edit_singleline(&mut self.workers);
                 });
 
-                ui.separator();
+                ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
                 if ui.button("Start Encoding").clicked() {
                     let mut cmd = generate_command(self);
