@@ -66,11 +66,11 @@ impl Default for AV1Studio {
             output_pixel_format: PixelFormat::default(),
             file_concatenation: String::new(),
             preset: 4.0,
-            crf: 29.0,
+            crf: 27.0,
             synthetic_grain: 0.to_string(),
             custom_encode_params: String::new(),
-            thread_affinity: 2.to_string(),
-            workers: 6.to_string(),
+            thread_affinity: String::new(),
+            workers: 0.to_string(),
             encoded_frames: None,
             total_frames: None,
             fps: None,
@@ -269,7 +269,7 @@ impl eframe::App for AV1Studio {
 
                 ui.horizontal(|ui| {
                     ui.label("*CRF:");
-                    ui.add(Slider::new(&mut self.crf, 0.0..=63.0).step_by(1.0));
+                    ui.add(Slider::new(&mut self.crf, 0.0..=70.0).step_by(1.0));
                 });
 
                 ui.horizontal(|ui| {
