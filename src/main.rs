@@ -42,6 +42,8 @@ struct AV1Studio {
 
     encoding_in_progress: bool,
     receiver: Option<mpsc::Receiver<String>>,
+
+    max_label_width: Option<f32>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Default)]
@@ -77,6 +79,7 @@ impl Default for AV1Studio {
             eta_time: None,
             encoding_in_progress: false,
             receiver: None,
+            max_label_width: None,
         }
     }
 }
@@ -126,6 +129,11 @@ impl AV1Studio {
 
 impl eframe::App for AV1Studio {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.max_label_width.is_none() {
+            ctx.request_repaint();
+            self.max_label_width = Some(0.0);
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             set_theme(ctx, MOCHA);
 
@@ -136,13 +144,36 @@ impl eframe::App for AV1Studio {
 
                 ui.label(RichText::new("File Options").weak());
 
+                let mut max_width = self.max_label_width.unwrap_or(0.0);
+
                 ui.horizontal(|ui| {
-                    ui.label("Av1an-verbosity Path:");
+                    let label_text = "Av1an-verbosity Path";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.av1an_verbosity_path);
+                    if ui.button("Browse").clicked() {
+                        if let Some(path) = FileDialog::new().pick_file() {
+                            self.av1an_verbosity_path = path.display().to_string();
+                        }
+                    }
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Full path to the Av1an-verbosity binary.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("*Input File:");
+                    let label_text = "*Input File";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.input_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -152,10 +183,20 @@ impl eframe::App for AV1Studio {
                             self.input_file = path.display().to_string();
                         }
                     }
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Full path to the input MKV file.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("*Output File:");
+                    let label_text = "*Output File";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.output_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -165,10 +206,20 @@ impl eframe::App for AV1Studio {
                             self.output_file = path.display().to_string();
                         }
                     }
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Full path to the output MKV file.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("Scenes File:");
+                    let label_text = "Scenes File";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.scenes_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -178,10 +229,28 @@ impl eframe::App for AV1Studio {
                             self.scenes_file = path.display().to_string();
                         }
                     }
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                            ui.label("Full path to a scenes file. (Check out");
+                            ui.hyperlink_to(
+                                RichText::new("Trix's Auto Boost Script")
+                                    .color(egui::Color32::from_rgb(4, 165, 229)),
+                                "https://github.com/trixoniisama/auto-boost-algorithm",
+                            );
+                            ui.label(".)");
+                        });
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("Zones File:");
+                    let label_text = "Zones File";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.zones_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -191,6 +260,14 @@ impl eframe::App for AV1Studio {
                             self.zones_file = path.display().to_string();
                         }
                     }
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                    ui.style_mut().interaction.selectable_labels = true;
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui | {
+                        ui.label("Full path to a file specifying zones within the video with differing encoder settings. (Check out");
+                        ui.hyperlink_to(RichText::new("Trix's Auto Boost Script").color(egui::Color32::from_rgb(4, 165, 229)), "https://github.com/trixoniisama/auto-boost-algorithm");
+                            ui.label(".)");
+                        });
+                    });
                 });
 
                 ui.add_space(ui.spacing().item_spacing.y * 2.0);
@@ -198,7 +275,13 @@ impl eframe::App for AV1Studio {
                 ui.label(RichText::new("Source Settings").weak());
 
                 ui.horizontal(|ui| {
-                    ui.label("*Source Library:");
+                    let label_text = "*Source Library";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ComboBox::from_id_salt("source_library_combobox")
                         .selected_text(self.source_library.as_str())
                         .show_ui(ui, |ui| {
@@ -218,11 +301,25 @@ impl eframe::App for AV1Studio {
                                 "L-SMASH",
                             );
                         });
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Method to use for piping exact ranges of frames to the encoder (determines how frames are extracted and sent to the encoder). BestSource is now, supposedly, the best best and most accurate option, but slightly slower than L-SMASH and ffms2. L-SMASH can sometimes fuck up the frame orders completely. ffms2 might corrupt frames on problematic sources.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("File Concatenation:");
+                    let label_text = "File Concatenation";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.file_concatenation);
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Method to use for concatenating encoded chunks and audio into output file. If you don't know what you're doing, just go with the default option.");
+                    });
                 });
 
                 ui.add_space(ui.spacing().item_spacing.y * 2.0);
@@ -230,14 +327,30 @@ impl eframe::App for AV1Studio {
                 ui.label(RichText::new("Video Settings").weak());
 
                 ui.horizontal(|ui| {
-                    ui.label("*(Output) Resolution:");
+                    let label_text = "*(Output) Resolution";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.width);
                     ui.label("×");
                     ui.text_edit_singleline(&mut self.height);
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Resolution to resize the output video to.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("*(Output) Pixel Format:");
+                    let label_text = "*(Output) Pixel Format";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ComboBox::from_id_salt("output_pixel_format_combobox")
                         .selected_text(self.output_pixel_format.as_str())
                         .show_ui(ui, |ui| {
@@ -252,6 +365,10 @@ impl eframe::App for AV1Studio {
                                 "yuv420p",
                             );
                         });
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("FFmpeg pixel format to use. It's best to go with yuv420p10le (10-bit color format), even if the input video has 8-bit colors.");
+                    });
                 });
 
                 ui.add_space(ui.spacing().item_spacing.y * 2.0);
@@ -259,27 +376,67 @@ impl eframe::App for AV1Studio {
                 ui.label(RichText::new("Encoding Parameters").weak());
 
                 ui.horizontal(|ui| {
-                    ui.label("*Preset:");
+                    let label_text = "*Preset";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.add(
                         Slider::new(&mut self.preset, 0.0..=13.0)
                             .step_by(1.0)
                             .custom_formatter(|n, _| format!("{}", n as i32)),
                     );
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Encoding preset to use. A very simple explanation is that you trade quality for encoding speed, the lower you go. Can be set from a range of 0-13. Generally, the sweet spot will be between 2-4-6, of course, depending on how powerful your CPU is, you might want to go higher.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("*CRF:");
+                    let label_text = "*CRF";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.add(Slider::new(&mut self.crf, 0.0..=70.0).step_by(1.0));
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Sets CRF value. A simple explanation is that you trade file size for quality, the lower you go. Can be set from a range of 0-70, can be set in quarter steps (0.25). Generally, the sweet spot will be between 27-23.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("*Synthetic Grain:");
+                    let label_text = "*Synthetic Grain";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.synthetic_grain);
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Sets the strength of the synthetic grain applied to the video.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("Custom Encoder Parameters:");
+                    let label_text = "Custom Encoder Parameters";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.custom_encode_params);
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Provides SVT-AV1-PSY custom encoder parameters on top of the already included parameters.");
+                    });
                 });
 
                 ui.add_space(ui.spacing().item_spacing.y * 2.0);
@@ -287,14 +444,37 @@ impl eframe::App for AV1Studio {
                 ui.label(RichText::new("Performance Settings").weak());
 
                 ui.horizontal(|ui| {
-                    ui.label("*Thread Affinity:");
+                    let label_text = "*Thread Affinity";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.thread_affinity);
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Pin each worker to a specific set of threads of this size. Leaving this option unspecified allows the OS to schedule all processes spawned.");
+                    });
                 });
 
                 ui.horizontal(|ui| {
-                    ui.label("*Workers:");
+                    let label_text = "*Workers";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
                     ui.text_edit_singleline(&mut self.workers);
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Number of workers to spawn. It's generally recommended, if you have enough RAM, to set this to the total amount of CPU cores you have for better encoding speeds. Leaving this at the default value will allow Av1an to figure out the amount of workers to spawn automatically.");
+                    });
                 });
+
+                // Update the stored max width for the next frame
+                self.max_label_width = Some(max_width);
 
                 ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
