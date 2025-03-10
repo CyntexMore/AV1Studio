@@ -9,7 +9,10 @@ use rfd::FileDialog;
 use catppuccin_egui::{set_theme, MOCHA};
 
 use crate::encoding::{generate_command, parse_av1an_output};
-use crate::models::{ColorPrimaries, MatrixCoefficients, PixelFormat, SourceLibrary};
+use crate::models::{
+    ColorPrimaries, ColorRange, MatrixCoefficients, PixelFormat, SourceLibrary,
+    TransferCharacteristics,
+};
 
 pub struct AV1Studio {
     pub av1an_verbosity_path: String,
@@ -27,6 +30,8 @@ pub struct AV1Studio {
     pub output_pixel_format: PixelFormat,
     pub color_primaries: ColorPrimaries,
     pub matrix_coefficients: MatrixCoefficients,
+    pub transfer_characteristics: TransferCharacteristics,
+    pub color_range: ColorRange,
 
     pub file_concatenation: String,
 
@@ -63,6 +68,8 @@ impl Default for AV1Studio {
             output_pixel_format: PixelFormat::default(),
             color_primaries: ColorPrimaries::default(),
             matrix_coefficients: MatrixCoefficients::default(),
+            transfer_characteristics: TransferCharacteristics::default(),
+            color_range: ColorRange::default(),
             file_concatenation: String::new(),
             preset: 4.0,
             crf: 27.0,
@@ -500,6 +507,137 @@ impl eframe::App for AV1Studio {
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Matrix coefficients, refer to the (SVT-AV1-PSY) user guide Appendix A.2 for full details. If you don't know what you're doing, just use the default option (2).");
+                    });
+                });
+
+                ui.horizontal(|ui| {
+                    let label_text = "Transfer Characteristics";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
+                    ComboBox::from_id_salt("transfer_characteristics_combobox")
+                        .selected_text(self.transfer_characteristics.as_str())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt709,
+                                "(1) BT.709",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Unpsecified,
+                                "(2) unspecified, default",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt470m,
+                                "(4) BT.470 System M (historical)",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt470bg,
+                                "(5) BT.470 System B, G (historical)",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt601,
+                                "(6) BT.601",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Smpte240,
+                                "(7) SMPTE 240 M",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Linear,
+                                "(8) Linear",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Log100,
+                                "(9) Logarithmic (100 : 1 range)",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Log100Sqrt10,
+                                "(10) Logarithmic (100 * Sqrt(10) : 1 range)",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Iec61966,
+                                "(11) IEC 61966-2-4",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt1361,
+                                "(12) BT.1361",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Srgb,
+                                "(13) sRGB or sYCC",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt202010,
+                                "(14) BT.2020 10-bit systems",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Bt202012,
+                                "(15) BT.2020 12-bit systems",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Smpte2084,
+                                "(16) SMPTE ST 2084, ITU BT.2100 PQ",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Smpte428,
+                                "(17) SMPTE ST 428",
+                            );
+                            ui.selectable_value(
+                                &mut self.transfer_characteristics,
+                                TransferCharacteristics::Hlg,
+                                "(18) BT.2100 HLG, ARIB STD-B67",
+                            );
+                        });
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Transfer characteristics, refer to the user guide Appendix A.2 for full details. If you don't know what you're doing, just use the default option (2).");
+                    });
+                });
+
+                ui.horizontal(|ui| {
+                    let label_text = "Color Range";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
+                    ComboBox::from_id_salt("color_range_combobox")
+                        .selected_text(self.color_range.as_str())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.color_range,
+                                ColorRange::Studio,
+                                "(0) studio, default",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_range,
+                                ColorRange::Full,
+                                "(1) full",
+                            );
+                        });
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Color range. If you don't know whast you're doing, just go with the default option (0).");
                     });
                 });
 

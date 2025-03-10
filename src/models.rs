@@ -122,3 +122,75 @@ impl MatrixCoefficients {
         }
     }
 }
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum TransferCharacteristics {
+    Bt709,        // [1] BT.709
+    Unpsecified,  // [2] unspecified, default
+    Bt470m,       // [4] BT.470 System M (historical)
+    Bt470bg,      // [5] BT.470 System B, G (historical)
+    Bt601,        // [6] BT.601
+    Smpte240,     // [7] SMPTE 240 M
+    Linear,       // [8] Linear
+    Log100,       // [9] Logarithmic (100 : 1 range)
+    Log100Sqrt10, // [10] Logarithmic (100 * Sqrt(10) : 1 range)
+    Iec61966,     // [11] IEC 61966-2-4
+    Bt1361,       // [12] BT.1361
+    Srgb,         // [13] sRGB or sYCC
+    Bt202010,     // [14] BT.2020 10-bit systems
+    Bt202012,     // [15] BT.2020 12-bit systems
+    Smpte2084,    // [16] SMPTE ST 2084, ITU BT.2100 PQ
+    Smpte428,     // [17] SMPTE ST 428
+    Hlg,          // [18] BT.2100 HLG, ARIB STD-B67
+}
+
+impl Default for TransferCharacteristics {
+    fn default() -> Self {
+        TransferCharacteristics::Unpsecified
+    }
+}
+
+impl TransferCharacteristics {
+    pub fn as_str(&self) -> &str {
+        match self {
+            TransferCharacteristics::Bt709 => "1",
+            TransferCharacteristics::Unpsecified => "2",
+            TransferCharacteristics::Bt470m => "4",
+            TransferCharacteristics::Bt470bg => "5",
+            TransferCharacteristics::Bt601 => "6",
+            TransferCharacteristics::Smpte240 => "7",
+            TransferCharacteristics::Linear => "8",
+            TransferCharacteristics::Log100 => "9",
+            TransferCharacteristics::Log100Sqrt10 => "10",
+            TransferCharacteristics::Iec61966 => "11",
+            TransferCharacteristics::Bt1361 => "12",
+            TransferCharacteristics::Srgb => "13",
+            TransferCharacteristics::Bt202010 => "14",
+            TransferCharacteristics::Bt202012 => "15",
+            TransferCharacteristics::Smpte2084 => "16",
+            TransferCharacteristics::Smpte428 => "17",
+            TransferCharacteristics::Hlg => "18",
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum ColorRange {
+    Studio, // [0], default
+    Full,   // [1] full
+}
+
+impl Default for ColorRange {
+    fn default() -> Self {
+        ColorRange::Studio
+    }
+}
+
+impl ColorRange {
+    pub fn as_str(&self) -> &str {
+        match self {
+            ColorRange::Studio => "0",
+            ColorRange::Full => "1",
+        }
+    }
+}
