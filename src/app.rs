@@ -126,7 +126,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.av1an_verbosity_path);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new().pick_file() {
@@ -146,7 +146,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.input_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -169,7 +169,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.output_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -192,7 +192,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.scenes_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -223,7 +223,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.zones_file);
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
@@ -254,7 +254,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ComboBox::from_id_salt("source_library_combobox")
                         .selected_text(self.source_library.as_str())
                         .show_ui(ui, |ui| {
@@ -287,7 +287,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.file_concatenation);
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
@@ -306,7 +306,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.width);
                     ui.label("×");
                     ui.text_edit_singleline(&mut self.height);
@@ -323,7 +323,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ComboBox::from_id_salt("output_pixel_format_combobox")
                         .selected_text(self.output_pixel_format.as_str())
                         .show_ui(ui, |ui| {
@@ -351,7 +351,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width -label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ComboBox::from_id_salt("color_primaries_combobox")
                         .selected_text(self.color_primaries.as_str())
                         .show_ui(ui, |ui| {
@@ -429,7 +429,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ComboBox::from_id_salt("matrix_coefficients_combobox")
                         .selected_text(self.matrix_coefficients.as_str())
                         .show_ui(ui, |ui| {
@@ -517,7 +517,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ComboBox::from_id_salt("transfer_characteristics_combobox")
                         .selected_text(self.transfer_characteristics.as_str())
                         .show_ui(ui, |ui| {
@@ -620,7 +620,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ComboBox::from_id_salt("color_range_combobox")
                         .selected_text(self.color_range.as_str())
                         .show_ui(ui, |ui| {
@@ -652,7 +652,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.add(
                         Slider::new(&mut self.preset, 0.0..=13.0)
                             .step_by(1.0)
@@ -671,7 +671,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.add(Slider::new(&mut self.crf, 0.0..=70.0).step_by(1.0));
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
@@ -686,7 +686,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.synthetic_grain);
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
@@ -701,7 +701,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.custom_encode_params);
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
@@ -720,7 +720,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.thread_affinity);
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
@@ -735,7 +735,7 @@ impl eframe::App for AV1Studio {
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
-                    ui.label(":");
+                    // ui.label(":");
                     ui.text_edit_singleline(&mut self.workers);
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;

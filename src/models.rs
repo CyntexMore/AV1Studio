@@ -37,7 +37,7 @@ impl PixelFormat {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum ColorPrimaries {
     Bt709,       // [1] BT.709
     Unspecified, // [2] unspecified, default
@@ -78,7 +78,7 @@ impl ColorPrimaries {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum MatrixCoefficients {
     Identity,    // [0] Identity matrix
     Bt709,       // [1] BT.709
@@ -123,7 +123,7 @@ impl MatrixCoefficients {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum TransferCharacteristics {
     Bt709,        // [1] BT.709
     Unpsecified,  // [2] unspecified, default
@@ -174,7 +174,7 @@ impl TransferCharacteristics {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum ColorRange {
     Studio, // [0], default
     Full,   // [1] full
