@@ -33,9 +33,13 @@ pub fn generate_command(state: &AV1Studio) -> Command {
     // Build command arguments
     if !state.input_file.is_empty() {
         cmd.arg("-i").arg(&state.input_file);
+    } else {
+        println!("ERROR : Input file path needs to be provided\n");
     }
     if !state.output_file.is_empty() {
         cmd.arg("-o").arg(&state.output_file);
+    } else {
+        println!("ERROR : Output file path needs to be provided\n");
     }
     if !state.scenes_file.is_empty() {
         cmd.arg("--scenes").arg(&state.scenes_file);
