@@ -24,6 +24,8 @@ struct AV1Studio {
     height: String,
 
     output_pixel_format: PixelFormat,
+    color_primaries: ColorPrimaries,
+    matrix_coefficients: MatrixCoefficients,
 
     file_concatenation: String,
 
@@ -66,6 +68,8 @@ impl Default for AV1Studio {
             width: String::new(),
             height: String::new(),
             output_pixel_format: PixelFormat::default(),
+            color_primaries: ColorPrimaries::default(),
+            matrix_coefficients: MatrixCoefficients::default(),
             file_concatenation: String::new(),
             preset: 4.0,
             crf: 27.0,
@@ -111,6 +115,92 @@ impl PixelFormat {
         match self {
             PixelFormat::Yuv420p => "yuv420p",
             PixelFormat::Yuv420p10le => "yuv420p10le",
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum ColorPrimaries {
+    Bt709,       // [1] BT.709
+    Unspecified, // [2] unspecified, default
+    Bt470m,      // [4] BT.470 System M (historical)
+    Bt470bg,     // [5] BT.470 System B, G (historical)
+    Bt601,       // [6] BT.601
+    Smpte240,    // [7] SMPTE 240
+    Film,        // [8] Generic film (color filters using illuminant C)
+    Bt2020,      // [9] SMPTE 428 (CIE 1921 XYZ)
+    Xyz,         // [10] SMPTE RP 431-2
+    Smpte431,    // [11] SMPTE EG 431-2
+    Smpte432,    // [12] SMPTE EG 432-1
+    Ebu3213,     // [22] EBU Tech. 3213-E
+}
+
+impl Default for ColorPrimaries {
+    fn default() -> Self {
+        ColorPrimaries::Unspecified
+    }
+}
+
+impl ColorPrimaries {
+    fn as_str(&self) -> &str {
+        match self {
+            ColorPrimaries::Bt709 => "1",
+            ColorPrimaries::Unspecified => "2",
+            ColorPrimaries::Bt470m => "4",
+            ColorPrimaries::Bt470bg => "5",
+            ColorPrimaries::Bt601 => "6",
+            ColorPrimaries::Smpte240 => "7",
+            ColorPrimaries::Film => "8",
+            ColorPrimaries::Bt2020 => "9",
+            ColorPrimaries::Xyz => "10",
+            ColorPrimaries::Smpte431 => "11",
+            ColorPrimaries::Smpte432 => "12",
+            ColorPrimaries::Ebu3213 => "22",
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum MatrixCoefficients {
+    Identity,    // [0] Identity matrix
+    Bt709,       // [1] BT.709
+    Unspecified, // [2] unspecified, default
+    Fcc,         // [4] US FCC 73.628
+    Bt470bg,     // [5] BT.470 System B, G (historical)
+    Bt601,       // [6] BT.601
+    Smpte240,    // [7] SMPTE 240 M
+    Ycgco,       // [8] YCgCo
+    Bt2020Ncl,   // [9] BT.2020 non-constant luminance, BT.2100 YCbCr
+    Bt2020Cl,    // [10] BT.2020 constant luminance
+    Smpte2085,   // [11] SMPTE ST 2085 YDzDx
+    ChromaNcl,   // [12] Chromaticity-derived non-constant luminance
+    ChromaCl,    // [13] Chromaticity-derived constant luminance
+    Ictcp,       // [14] BT.2100 ICtCp
+}
+
+impl Default for MatrixCoefficients {
+    fn default() -> Self {
+        MatrixCoefficients::Unspecified
+    }
+}
+
+impl MatrixCoefficients {
+    fn as_str(&self) -> &str {
+        match self {
+            MatrixCoefficients::Identity => "0",
+            MatrixCoefficients::Bt709 => "1",
+            MatrixCoefficients::Unspecified => "2",
+            MatrixCoefficients::Fcc => "4",
+            MatrixCoefficients::Bt470bg => "5",
+            MatrixCoefficients::Bt601 => "6",
+            MatrixCoefficients::Smpte240 => "7",
+            MatrixCoefficients::Ycgco => "8",
+            MatrixCoefficients::Bt2020Ncl => "9",
+            MatrixCoefficients::Bt2020Cl => "10",
+            MatrixCoefficients::Smpte2085 => "11",
+            MatrixCoefficients::ChromaNcl => "12",
+            MatrixCoefficients::ChromaCl => "13",
+            MatrixCoefficients::Ictcp => "14",
         }
     }
 }
@@ -368,6 +458,172 @@ impl eframe::App for AV1Studio {
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("FFmpeg pixel format to use. It's best to go with yuv420p10le (10-bit color format), even if the input video has 8-bit colors.");
+                    });
+                });
+
+                ui.horizontal(|ui| {
+                    let label_text = "Color Primaries";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width -label_width, 1.0));
+                    }
+                    ui.label(":");
+                    ComboBox::from_id_salt("color_primaries_combobox")
+                        .selected_text(self.color_primaries.as_str())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Bt709,
+                                "(1) BT.709",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Unspecified,
+                                "(2) Unspecified, Default"
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Bt470m,
+                                "(4) BT.470 System M (historical)",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Bt470bg,
+                                "(5) BT.470 System B, G (historical)",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Bt601,
+                                "(6) BT.601",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Smpte240,
+                                "(7) SMPTE 240",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Film,
+                                "(8) Generic Film (color filters using illuminant C)",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Bt2020,
+                                "(9) BT.2020, BT.2100",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Xyz,
+                                "(10) SMPTE 428 (CIE 1921 XYZ)",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Smpte431,
+                                "(11) SMPTE RP 431-2",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Smpte432,
+                                "(12) SMPT EG 432-1",
+                            );
+                            ui.selectable_value(
+                                &mut self.color_primaries,
+                                ColorPrimaries::Ebu3213,
+                                "(22) EBU Tech. 3213-E",
+                            );
+                        });
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Color primaries, refer to the (SVT-AV1-PSY) user guide Appendix A.2 for full details. If you don't know what you're doing, just use the default option (2).");
+                    });
+                });
+
+                ui.horizontal(|ui| {
+                    let label_text = "Matrix Coefficients";
+                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                    max_width = max_width.max(label_width);
+                    if label_width < max_width {
+                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    }
+                    ui.label(":");
+                    ComboBox::from_id_salt("matrix_coefficients_combobox")
+                        .selected_text(self.matrix_coefficients.as_str())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Identity,
+                                "(0) Identity matrix",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Bt709,
+                                "(1) BT.709",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Unspecified,
+                                "(2) unspecified, default",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Fcc,
+                                "(4) US FCC 73.628",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Bt470bg,
+                                "(5) BT.470 System B, G (historical)",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Bt601,
+                                "(6) BT.601",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Smpte240,
+                                "(7) SMPTE 240 M",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Ycgco,
+                                "(8) YCgCo",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Bt2020Ncl,
+                                "(9) BT.2020 non-constant luminance, BT.2100 YCbCr",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Bt2020Cl,
+                                "(10) BT.2020 constant luminance",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Smpte2085,
+                                "(11) SMPTE ST 2085 YDzDx",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::ChromaNcl,
+                                "(12) Chromaticity-derived non-constant luminance",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::ChromaCl,
+                                "(13) Chromaticity-derived constant luminance",
+                            );
+                            ui.selectable_value(
+                                &mut self.matrix_coefficients,
+                                MatrixCoefficients::Ictcp,
+                                "(14) BT.2100 ICtCp",
+                            );
+                        });
+                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        ui.label("Matrix coefficients, refer to the (SVT-AV1-PSY) user guide Appendix A.2 for full details. If you don't know what you're doing, just use the default option (2).");
                     });
                 });
 
