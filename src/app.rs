@@ -6,8 +6,6 @@ use egui::widgets::Slider;
 use egui::{ComboBox, ProgressBar, RichText, TextStyle};
 use rfd::FileDialog;
 
-use catppuccin_egui::{set_theme, MOCHA};
-
 use crate::encoding::{generate_command, parse_av1an_output};
 use crate::models::{
     ColorPrimaries, ColorRange, MatrixCoefficients, PixelFormat, SourceLibrary,
@@ -109,7 +107,6 @@ impl eframe::App for AV1Studio {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            set_theme(ctx, MOCHA);
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AV1Studio");
@@ -128,7 +125,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.av1an_verbosity_path);
+                    ui.add_sized(
+                        [500.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.av1an_verbosity_path),
+                    );
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new().pick_file() {
                             self.av1an_verbosity_path = path.display().to_string();
@@ -148,7 +148,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.input_file);
+                    ui.add_sized(
+                        [500.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.input_file),
+                    );
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
                             .add_filter("Video Files", &[".mkv"])
@@ -171,7 +174,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.output_file);
+                    ui.add_sized(
+                        [500.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.output_file),
+                    );
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
                             .add_filter("Video Files", &["mkv"])
@@ -194,7 +200,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.scenes_file);
+                    ui.add_sized(
+                        [500.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.scenes_file),
+                    );
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
                             .add_filter("JSON Files", &["json"])
@@ -225,7 +234,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.zones_file);
+                    ui.add_sized(
+                        [500.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.zones_file),
+                    );
                     if ui.button("Browse").clicked() {
                         if let Some(path) = FileDialog::new()
                             .add_filter("TXT Files", &["txt"])
@@ -289,7 +301,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.file_concatenation);
+                    ui.add_sized(
+                        [100.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.file_concatenation),
+                    );
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Method to use for concatenating encoded chunks and audio into output file. If you don't know what you're doing, just go with the default option.");
@@ -308,9 +323,15 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.width);
+                    ui.add_sized(
+                        [100.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.width),
+                    );
                     ui.label("×");
-                    ui.text_edit_singleline(&mut self.height);
+                    ui.add_sized(
+                        [100.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.height),
+                    );
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Resolution to resize the output video to.");
@@ -688,7 +709,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.synthetic_grain);
+                    ui.add_sized(
+                        [100.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.synthetic_grain),
+                    );
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Sets the strength of the synthetic grain applied to the video.");
@@ -705,7 +729,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(0.5, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.custom_encode_params);
+                    ui.add_sized(
+                        [500.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.custom_encode_params),
+                    );
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Provides SVT-AV1-PSY custom encoder parameters on top of the already included parameters.");
@@ -724,7 +751,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.thread_affinity);
+                    ui.add_sized(
+                        [100.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.thread_affinity),
+                    );
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Pin each worker to a specific set of threads of this size. Leaving this option unspecified allows the OS to schedule all processes spawned.");
@@ -739,7 +769,10 @@ impl eframe::App for AV1Studio {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
                     }
                     // ui.label(":");
-                    ui.text_edit_singleline(&mut self.workers);
+                    ui.add_sized(
+                        [100.0, 20.0],
+                        egui::TextEdit::singleline(&mut self.workers),
+                    );
                     ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         ui.label("Number of workers to spawn. It's generally recommended, if you have enough RAM, to set this to the total amount of CPU cores you have for better encoding speeds. Leaving this at the default value will allow Av1an to figure out the amount of workers to spawn automatically.");
