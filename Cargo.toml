@@ -4,9 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-catppuccin-egui = { version = "5.4.0", default-features = false, features = ["egui30"] }
-eframe = "0.30.0"
-egui = "0.30.0"
+eframe = "0.31.1"
+egui = "0.31.1"
 num_cpus = "1.16.0"
 regex = "1.11.1"
 rfd = "0.15.2"
