@@ -701,6 +701,8 @@ impl eframe::App for AV1Studio {
                     max_width = max_width.max(label_width);
                     if label_width < max_width {
                         ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
+                    } else {
+                        ui.allocate_space(egui::vec2(0.5, 1.0));
                     }
                     // ui.label(":");
                     ui.text_edit_singleline(&mut self.custom_encode_params);
