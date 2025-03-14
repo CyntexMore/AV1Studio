@@ -2,6 +2,13 @@
 
 **AV1Studio** is a GUI for AV1 encoding via Av1an and SVT-AV1-PSY, written in Rust using egui. If you're allergic to well-written programs and good-looking UIs, this one is for *you*!
 
+## `dev` TO-DO
+
+List of the things I want to do before merging `dev` with `main`:
+
+* [ ] Complete settings menu with support for saving settings to `./setting.yaml` with `serde` and `serde_yaml`
+* [ ] Complete the preset saving/loading mechanics with `serde` and `serde_yaml`
+
 ## Usage
 
 |                           	|      **Default Value**      	|                                                                                                                                                                         **Description**                                                                                                                                                                        	|
