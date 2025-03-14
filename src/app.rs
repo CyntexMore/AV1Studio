@@ -126,6 +126,74 @@ impl AV1Studio {
 
         Self::default()
     }
+
+    pub fn save_preset_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // Create a subset of the struct with only the fields we want to save
+        let preset = AV1StudioPreset {
+            source_library: self.source_library.clone(),
+            width: self.width.clone(),
+            height: self.height.clone(),
+            output_pixel_format: self.output_pixel_format.clone(),
+            color_primaries: self.color_primaries.clone(),
+            matrix_coefficients: self.matrix_coefficients.clone(),
+            transfer_characteristics: self.transfer_characteristics.clone(),
+            color_range: self.color_range.clone(),
+            file_concatenation: self.file_concatenation.clone(),
+            preset: self.preset,
+            crf: self.crf,
+            synthetic_grain: self.synthetic_grain.clone(),
+            custom_encode_params: self.custom_encode_params.clone(),
+        };
+
+        // Serialize to YAML and write to file
+        let yaml = serde_yaml::to_string(&preset)?;
+        std::fs::write(path, yaml)?;
+
+        Ok(())
+    }
+
+    pub fn load_preset_from_file(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // Read the file contents
+        let file_content = std::fs::read_to_string(path)?;
+
+        // Deserialize from YAML
+        let preset: AV1StudioPreset = serde_yaml::from_str(&file_content)?;
+
+        // Update the struct fields
+        self.source_library = preset.source_library;
+        self.width = preset.width;
+        self.height = preset.height;
+        self.output_pixel_format = preset.output_pixel_format;
+        self.color_primaries = preset.color_primaries;
+        self.matrix_coefficients = preset.matrix_coefficients;
+        self.transfer_characteristics = preset.transfer_characteristics;
+        self.color_range = preset.color_range;
+        self.file_concatenation = preset.file_concatenation;
+        self.preset = preset.preset;
+        self.crf = preset.crf;
+        self.synthetic_grain = preset.synthetic_grain;
+        self.custom_encode_params = preset.custom_encode_params;
+
+        Ok(())
+    }
+}
+
+// Create a temporary struct for serialization/deserialization
+#[derive(Serialize, Deserialize)]
+struct AV1StudioPreset {
+    source_library: SourceLibrary,
+    width: String,
+    height: String,
+    output_pixel_format: PixelFormat,
+    color_primaries: ColorPrimaries,
+    matrix_coefficients: MatrixCoefficients,
+    transfer_characteristics: TransferCharacteristics,
+    color_range: ColorRange,
+    file_concatenation: String,
+    preset: f32,
+    crf: f32,
+    synthetic_grain: String,
+    custom_encode_params: String,
 }
 
 impl eframe::App for AV1Studio {
@@ -246,13 +314,43 @@ impl eframe::App for AV1Studio {
                         }
 
                         if ui.button("Load Preset").clicked() {
-                            FileDialog::new().pick_file();
-                            println!("DEBUG : Load Preset button .clicked().\nIt doesn't do anything yet.");
+                            if let Some(path) = FileDialog::new()
+                                .add_filter("YAML Files", &["yaml", "yml"])
+                                .pick_file() 
+                            {
+                                match self.load_preset_from_file(&path.display().to_string()) {
+                                    Ok(_) => {
+                                        println!("Preset loaded successfully from {}", path.display());
+                                    },
+                                    Err(e) => {
+                                        println!("Error loading preset: {}", e);
+                                    }
+                                }
+                            }
                         }
 
                         if ui.button("Save Preset").clicked() {
-                            FileDialog::new().pick_file();
-                            println!("DEBUG : Save Preset button .clicked().\nIt doesn't do anything yet.");
+                            if let Some(path) = FileDialog::new()
+                                .add_filter("YAML Files", &["yaml", "yml"])
+                                .save_file()
+                            {
+                                // Ensure the file has a .yaml extension
+                                let path_string = path.display().to_string();
+                                let file_path = if path_string.ends_with(".yaml") || path_string.ends_with(".yml") {
+                                    path_string
+                                } else {
+                                    format!("{}.yaml", path_string)
+                                };
+        
+                                match self.save_preset_to_file(&file_path) {
+                                    Ok(_) => {
+                                        println!("Preset saved successfully to {}", file_path);
+                                    },
+                                    Err(e) => {
+                                        println!("Error saving preset: {}", e);
+                                    }
+                                }
+                            }
                         }
                     });
                 });
