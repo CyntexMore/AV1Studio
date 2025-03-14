@@ -73,6 +73,8 @@ pub struct AV1Studio {
 
     #[serde(skip)]
     pub show_settings_window: bool,
+
+    pub active_theme: Theme,
 }
 
 impl Default for AV1Studio {
@@ -109,6 +111,7 @@ impl Default for AV1Studio {
             max_label_width: None,
             settings_max_label_width: None,
             show_settings_window: false,
+            active_theme: Theme::default(),
         }
     }
 }
@@ -202,18 +205,35 @@ impl eframe::App for AV1Studio {
                                     ui.label(RichText::new("Looks").weak());
 
                                     ui.horizontal(|ui| {
-                                        let label_text = "Active Theme";
+                                        let label_text = "Theme";
                                         let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
                                         settings_max_label_width = settings_max_label_width.max(label_width);
                                         if label_width < settings_max_label_width {
                                             ui.allocate_space(egui::vec2(settings_max_label_width - label_width, 1.0));
                                         }
-                                        if ui.button("Toggle Dark").clicked() {
-                                            ctx.set_visuals(Visuals::dark());
-                                        }
-                                        if ui.button("Toggle Light").clicked() {
-                                            ctx.set_visuals(Visuals::light());
-                                        }
+                                        ComboBox::from_id_salt("theme_switcher_combobox")
+                                            .selected_text(self.active_theme.as_str())
+                                            .show_ui(ui, |ui| {
+                                                ui.selectable_value(
+                                                    &mut self.active_theme,
+                                                    Theme::Dark,
+                                                    "Dark",
+                                                );
+                                                ui.selectable_value(
+                                                    &mut self.active_theme,
+                                                    Theme::Light,
+                                                    "Light",
+                                                );
+                                                ui.selectable_value(
+                                                    &mut self.active_theme,
+                                                    Theme::CatppuccinMocha,
+                                                    "Catppuccin Mocha",
+                                                );
+                                            });
+                                        ui.label(RichText::new("").weak()).on_hover_ui(|ui| {
+                                            ui.style_mut().interaction.selectable_labels = true;
+                                            ui.label("Name of the active theme.");
+                                        });
                                     });
 
                                     ui.add_space(ui.spacing().item_spacing.y * 2.0);
@@ -221,6 +241,12 @@ impl eframe::App for AV1Studio {
                                     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                                         if ui.button("Save").clicked() {
                                             println!("DEBUG : Save settings button .clicked().\nIt doesn't do anything yet.");
+
+                                            if self.active_theme == Theme::Dark {
+                                                ctx.set_visuals(Visuals::dark());
+                                            } else if self.active_theme == Theme::Light {
+                                                ctx.set_visuals(Visuals::light());
+                                            }
                                         }
                                     });
                                 });
