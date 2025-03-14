@@ -7,7 +7,7 @@
 List of the things I want to do before merging `dev` with `main`:
 
 * [ ] Complete settings menu with support for saving settings to `./setting.yaml` with `serde` and `serde_yaml`
-* [ ] Complete the preset saving/loading mechanics with `serde` and `serde_yaml`
+* [x] Complete the preset saving/loading mechanics with `serde` and `serde_yaml`
 * [ ] Switch to asynchronous file dialogs with `rfd`
 
 ## Usage
