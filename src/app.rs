@@ -3,7 +3,7 @@ use std::process::Stdio;
 use std::sync::mpsc;
 
 use egui::widgets::Slider;
-use egui::{ComboBox, ProgressBar, RichText, TextStyle};
+use egui::{ComboBox, ProgressBar, RichText, TextStyle, Visuals};
 use rfd::FileDialog;
 
 use crate::encoding::{generate_command, parse_av1an_output};
@@ -175,16 +175,12 @@ impl eframe::App for AV1Studio {
                                         });
                                     });
 
-                                    ui.add_space(ui.spacing().item_spacing.y * 2.0);
-
                                     ui.horizontal(|ui| {
                                         let label_text = "Default Preset Path";
                                         let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
                                         settings_max_label_width = settings_max_label_width.max(label_width);
                                         if label_width < settings_max_label_width {
                                             ui.allocate_space(egui::vec2(settings_max_label_width - label_width, 1.0));
-                                        } else {
-                                            ui.allocate_space(egui::vec2(0.5, 1.0));
                                         }
                                         ui.add_sized(
                                             [500.0, 20.0],
@@ -199,6 +195,25 @@ impl eframe::App for AV1Studio {
                                             ui.style_mut().interaction.selectable_labels = true;
                                             ui.label("Path to the YAML preset file that gets loaded every time AV1Studio is started.");
                                         });
+                                    });
+
+                                    ui.add_space(ui.spacing().item_spacing.y * 2.0);
+
+                                    ui.label(RichText::new("Looks").weak());
+
+                                    ui.horizontal(|ui| {
+                                        let label_text = "Active Theme";
+                                        let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                                        settings_max_label_width = settings_max_label_width.max(label_width);
+                                        if label_width < settings_max_label_width {
+                                            ui.allocate_space(egui::vec2(settings_max_label_width - label_width, 1.0));
+                                        }
+                                        if ui.button("Toggle Dark").clicked() {
+                                            ctx.set_visuals(Visuals::dark());
+                                        }
+                                        if ui.button("Toggle Light").clicked() {
+                                            ctx.set_visuals(Visuals::light());
+                                        }
                                     });
 
                                     ui.add_space(ui.spacing().item_spacing.y * 2.0);
