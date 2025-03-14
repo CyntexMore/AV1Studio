@@ -1,4 +1,6 @@
-#[derive(PartialEq, Eq, Clone, Copy, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Eq, Clone, Copy, Default, Serialize, Deserialize)]
 pub enum SourceLibrary {
     #[default]
     BestSource,
@@ -16,7 +18,7 @@ impl SourceLibrary {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum PixelFormat {
     Yuv420p,
     Yuv420p10le,
@@ -37,7 +39,7 @@ impl PixelFormat {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ColorPrimaries {
     Bt709,       // [1] BT.709
     Unspecified, // [2] unspecified, default
@@ -78,7 +80,7 @@ impl ColorPrimaries {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum MatrixCoefficients {
     Identity,    // [0] Identity matrix
     Bt709,       // [1] BT.709
@@ -123,7 +125,7 @@ impl MatrixCoefficients {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum TransferCharacteristics {
     Bt709,        // [1] BT.709
     Unpsecified,  // [2] unspecified, default
@@ -174,7 +176,7 @@ impl TransferCharacteristics {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ColorRange {
     Studio, // [0], default
     Full,   // [1] full
