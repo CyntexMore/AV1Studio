@@ -8,7 +8,7 @@ use rfd::FileDialog;
 
 use crate::encoding::{generate_command, parse_av1an_output};
 use crate::models::{
-    ColorPrimaries, ColorRange, MatrixCoefficients, PixelFormat, SourceLibrary,
+    ColorPrimaries, ColorRange, MatrixCoefficients, PixelFormat, SourceLibrary, Theme,
     TransferCharacteristics,
 };
 
@@ -224,11 +224,6 @@ impl eframe::App for AV1Studio {
                                                     Theme::Light,
                                                     "Light",
                                                 );
-                                                ui.selectable_value(
-                                                    &mut self.active_theme,
-                                                    Theme::CatppuccinMocha,
-                                                    "Catppuccin Mocha",
-                                                );
                                             });
                                         ui.label(RichText::new("").weak()).on_hover_ui(|ui| {
                                             ui.style_mut().interaction.selectable_labels = true;
@@ -240,8 +235,6 @@ impl eframe::App for AV1Studio {
 
                                     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                                         if ui.button("Save").clicked() {
-                                            println!("DEBUG : Save settings button .clicked().\nIt doesn't do anything yet.");
-
                                             if self.active_theme == Theme::Dark {
                                                 ctx.set_visuals(Visuals::dark());
                                             } else if self.active_theme == Theme::Light {
