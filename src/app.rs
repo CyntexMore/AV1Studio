@@ -3,21 +3,30 @@ use std::process::Stdio;
 use std::sync::mpsc;
 
 use egui::widgets::Slider;
-use egui::{ComboBox, ProgressBar, RichText, TextStyle};
+use egui::{ComboBox, ProgressBar, RichText, TextStyle, Visuals};
 use rfd::FileDialog;
 
 use crate::encoding::{generate_command, parse_av1an_output};
 use crate::models::{
-    ColorPrimaries, ColorRange, MatrixCoefficients, PixelFormat, SourceLibrary,
+    ColorPrimaries, ColorRange, MatrixCoefficients, PixelFormat, SourceLibrary, Theme,
     TransferCharacteristics,
 };
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
 pub struct AV1Studio {
     pub av1an_verbosity_path: String,
 
+    pub default_preset_path: String,
+
+    #[serde(skip)]
     pub input_file: String,
+    #[serde(skip)]
     pub output_file: String,
+    #[serde(skip)]
     pub scenes_file: String,
+    #[serde(skip)]
     pub zones_file: String,
 
     pub source_library: SourceLibrary,
@@ -38,24 +47,41 @@ pub struct AV1Studio {
     pub synthetic_grain: String, // Synthetic grain is a String to allow editing
     pub custom_encode_params: String,
 
+    #[serde(skip)]
     pub thread_affinity: String,
+    #[serde(skip)]
     pub workers: String,
 
+    #[serde(skip)]
     pub encoded_frames: Option<u32>,
+    #[serde(skip)]
     pub total_frames: Option<u32>,
+    #[serde(skip)]
     pub fps: Option<f64>,
+    #[serde(skip)]
     pub eta_time: Option<String>,
 
+    #[serde(skip)]
     pub encoding_in_progress: bool,
+    #[serde(skip)]
     pub receiver: Option<mpsc::Receiver<String>>,
 
+    #[serde(skip)]
     pub max_label_width: Option<f32>,
+    #[serde(skip)]
+    pub settings_max_label_width: Option<f32>,
+
+    #[serde(skip)]
+    pub show_settings_window: bool,
+
+    pub active_theme: Theme,
 }
 
 impl Default for AV1Studio {
     fn default() -> Self {
         AV1Studio {
             av1an_verbosity_path: String::new(),
+            default_preset_path: String::new(),
             input_file: String::new(),
             output_file: String::new(),
             scenes_file: String::new(),
@@ -83,6 +109,9 @@ impl Default for AV1Studio {
             encoding_in_progress: false,
             receiver: None,
             max_label_width: None,
+            settings_max_label_width: None,
+            show_settings_window: false,
+            active_theme: Theme::default(),
         }
     }
 }
@@ -97,6 +126,74 @@ impl AV1Studio {
 
         Self::default()
     }
+
+    pub fn save_preset_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // Create a subset of the struct with only the fields we want to save
+        let preset = AV1StudioPreset {
+            source_library: self.source_library.clone(),
+            width: self.width.clone(),
+            height: self.height.clone(),
+            output_pixel_format: self.output_pixel_format.clone(),
+            color_primaries: self.color_primaries.clone(),
+            matrix_coefficients: self.matrix_coefficients.clone(),
+            transfer_characteristics: self.transfer_characteristics.clone(),
+            color_range: self.color_range.clone(),
+            file_concatenation: self.file_concatenation.clone(),
+            preset: self.preset,
+            crf: self.crf,
+            synthetic_grain: self.synthetic_grain.clone(),
+            custom_encode_params: self.custom_encode_params.clone(),
+        };
+
+        // Serialize to YAML and write to file
+        let yaml = serde_yaml::to_string(&preset)?;
+        std::fs::write(path, yaml)?;
+
+        Ok(())
+    }
+
+    pub fn load_preset_from_file(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // Read the file contents
+        let file_content = std::fs::read_to_string(path)?;
+
+        // Deserialize from YAML
+        let preset: AV1StudioPreset = serde_yaml::from_str(&file_content)?;
+
+        // Update the struct fields
+        self.source_library = preset.source_library;
+        self.width = preset.width;
+        self.height = preset.height;
+        self.output_pixel_format = preset.output_pixel_format;
+        self.color_primaries = preset.color_primaries;
+        self.matrix_coefficients = preset.matrix_coefficients;
+        self.transfer_characteristics = preset.transfer_characteristics;
+        self.color_range = preset.color_range;
+        self.file_concatenation = preset.file_concatenation;
+        self.preset = preset.preset;
+        self.crf = preset.crf;
+        self.synthetic_grain = preset.synthetic_grain;
+        self.custom_encode_params = preset.custom_encode_params;
+
+        Ok(())
+    }
+}
+
+// Create a temporary struct for serialization/deserialization
+#[derive(Serialize, Deserialize)]
+struct AV1StudioPreset {
+    source_library: SourceLibrary,
+    width: String,
+    height: String,
+    output_pixel_format: PixelFormat,
+    color_primaries: ColorPrimaries,
+    matrix_coefficients: MatrixCoefficients,
+    transfer_characteristics: TransferCharacteristics,
+    color_range: ColorRange,
+    file_concatenation: String,
+    preset: f32,
+    crf: f32,
+    synthetic_grain: String,
+    custom_encode_params: String,
 }
 
 impl eframe::App for AV1Studio {
@@ -108,37 +205,150 @@ impl eframe::App for AV1Studio {
 
         egui::CentralPanel::default().show(ctx, |ui| {
 
-            egui::ScrollArea::vertical().show(ui, |ui| {
+        ui.horizontal(|ui| {
                 ui.heading("AV1Studio");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    if ui.button("Settings").clicked() {
+                        self.show_settings_window = true;
+                        println!("DEBUG : Settings button .clicked().");
+                    }
+                    if self.show_settings_window {
+                        egui::Window::new("AV1Studio - Settings")
+                            .open(&mut self.show_settings_window)
+                            .show(ctx, |ui| {
+                                let mut settings_max_label_width = self.settings_max_label_width.unwrap_or(0.0);
+                                ui.label(RichText::new("Paths").weak());
+                                ui.horizontal(|ui| {
+                                    let label_text = "Av1an-verbosity Path";
+                                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                                    settings_max_label_width = settings_max_label_width.max(label_width);
+                                    if label_width < settings_max_label_width {
+                                        ui.allocate_space(egui::vec2(settings_max_label_width - label_width, 1.0));
+                                    } else {
+                                        ui.allocate_space(egui::vec2(0.5, 1.0));
+                                    }
+                                    ui.add_sized(
+                                        [500.0, 20.0],
+                                        egui::TextEdit::singleline(&mut self.av1an_verbosity_path),
+                                    );
+                                    if ui.button("Browse").clicked() {
+                                        if let Some(path) = FileDialog::new().pick_file() {
+                                            self.av1an_verbosity_path = path.display().to_string();
+                                        }
+                                    }
+                                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                                        ui.style_mut().interaction.selectable_labels = true;
+                                        ui.label("Full path to the Av1an-verbosity binary.");
+                                    });
+                                });
+                                ui.horizontal(|ui| {
+                                    let label_text = "Default Preset Path";
+                                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                                    settings_max_label_width = settings_max_label_width.max(label_width);
+                                    if label_width < settings_max_label_width {
+                                        ui.allocate_space(egui::vec2(settings_max_label_width - label_width, 1.0));
+                                    }
+                                    ui.add_sized(
+                                        [500.0, 20.0],
+                                        egui::TextEdit::singleline(&mut self.default_preset_path),
+                                    );
+                                    if ui.button("Browse").clicked() {
+                                        if let Some(path) = FileDialog::new().pick_file() {
+                                            self.av1an_verbosity_path = path.display().to_string();
+                                        }
+                                    }
+                                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
+                                        ui.style_mut().interaction.selectable_labels = true;
+                                        ui.label("Path to the YAML preset file that gets loaded every time AV1Studio is started.");
+                                    });
+                                });
+                                ui.add_space(ui.spacing().item_spacing.y * 2.0);
+                                ui.label(RichText::new("Looks").weak());
+                                ui.horizontal(|ui| {
+                                    let label_text = "Theme";
+                                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
+                                    settings_max_label_width = settings_max_label_width.max(label_width);
+                                    if label_width < settings_max_label_width {
+                                        ui.allocate_space(egui::vec2(settings_max_label_width - label_width, 1.0));
+                                    }
+                                    ComboBox::from_id_salt("theme_switcher_combobox")
+                                        .selected_text(self.active_theme.as_str())
+                                        .show_ui(ui, |ui| {
+                                            ui.selectable_value(
+                                                &mut self.active_theme,
+                                                Theme::Dark,
+                                                "Dark",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.active_theme,
+                                                Theme::Light,
+                                                "Light",
+                                            );
+                                        });
+                                    ui.label(RichText::new("").weak()).on_hover_ui(|ui| {
+                                        ui.style_mut().interaction.selectable_labels = true;
+                                        ui.label("Name of the active theme.");
+                                    });
+                                });
+                                ui.add_space(ui.spacing().item_spacing.y * 2.0);
+                                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                                    if ui.button("Save").clicked() {
+                                        if self.active_theme == Theme::Dark {
+                                            ctx.set_visuals(Visuals::dark());
+                                        } else if self.active_theme == Theme::Light {
+                                            ctx.set_visuals(Visuals::light());
+                                        }
+                                    }
+                                });
+                            });
+                    }
+                    if ui.button("Load Preset").clicked() {
+                        if let Some(path) = FileDialog::new()
+                            .add_filter("YAML Files", &["yaml", "yml"])
+                            .pick_file() 
+                        {
+                            match self.load_preset_from_file(&path.display().to_string()) {
+                                Ok(_) => {
+                                    println!("Preset loaded successfully from {}", path.display());
+                                },
+                                Err(e) => {
+                                    println!("Error loading preset: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    if ui.button("Save Preset").clicked() {
+                        if let Some(path) = FileDialog::new()
+                            .add_filter("YAML Files", &["yaml", "yml"])
+                            .save_file()
+                        {
+                            // Ensure the file has a .yaml extension
+                            let path_string = path.display().to_string();
+                            let file_path = if path_string.ends_with(".yaml") || path_string.ends_with(".yml") {
+                                path_string
+                            } else {
+                                format!("{}.yaml", path_string)
+                            };
+    
+                            match self.save_preset_to_file(&file_path) {
+                                Ok(_) => {
+                                    println!("Preset saved successfully to {}", file_path);
+                                },
+                                Err(e) => {
+                                    println!("Error saving preset: {}", e);
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+            ui.separator();
 
-                ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
 
                 ui.label(RichText::new("File Options").weak());
 
                 let mut max_width = self.max_label_width.unwrap_or(0.0);
-
-                ui.horizontal(|ui| {
-                    let label_text = "Av1an-verbosity Path";
-                    let label_width = ui.label(label_text).rect.max.x - ui.min_rect().min.x;
-                    max_width = max_width.max(label_width);
-                    if label_width < max_width {
-                        ui.allocate_space(egui::vec2(max_width - label_width, 1.0));
-                    }
-                    // ui.label(":");
-                    ui.add_sized(
-                        [500.0, 20.0],
-                        egui::TextEdit::singleline(&mut self.av1an_verbosity_path),
-                    );
-                    if ui.button("Browse").clicked() {
-                        if let Some(path) = FileDialog::new().pick_file() {
-                            self.av1an_verbosity_path = path.display().to_string();
-                        }
-                    }
-                    ui.label(RichText::new("ℹ").weak()).on_hover_ui(|ui| {
-                        ui.style_mut().interaction.selectable_labels = true;
-                        ui.label("Full path to the Av1an-verbosity binary.");
-                    });
-                });
 
                 ui.horizontal(|ui| {
                     let label_text = "*Input File";
