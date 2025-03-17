@@ -78,7 +78,7 @@ pub fn generate_command(state: &AV1Studio) -> Command {
     } else {
         let params = format!(
             "--tune 2 --keyint 1 --lp 2 --irefresh-type 2 --crf {} --preset {} --film-grain {} --color-primaries {:?} --transfer-characteristics {:?} --matrix-coefficients {:?} --color-range {:?}",
-            state.crf, state.preset, state.synthetic_grain, state.color_primaries, state.transfer_characteristics, state.matrix_coefficients, state.color_range,
+            state.crf, state.preset, state.synthetic_grain, state.color_primaries.as_str(), state.transfer_characteristics.as_str(), state.matrix_coefficients.as_str(), state.color_range.as_str(),
         );
         cmd.arg("--force").arg("-v").arg(params);
     }
