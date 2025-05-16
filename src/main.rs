@@ -1,4 +1,5 @@
 mod app;
+mod depcheck;
 mod encoding;
 mod models;
 
